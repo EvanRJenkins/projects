@@ -6,7 +6,7 @@ This project is a digital oscilloscope implemented on an FPGA, designed to captu
 
 ## Features
 
-* Analog signal capture using FPGA logic
+* Analog signal capture using FPGA to control and interface to an ADC
 * Trigger-based data acquisition with customizable conditions
 * Frame-based UART transmission of captured data to a host PC
 * Python interface for asynchronous data visualization and plotting
@@ -26,7 +26,7 @@ The FPGA design is implemented in Verilog HDL and includes:
 
 The design is parameterized with `CLOCKS_PER_BIT` to adapt to different baud rates for UART communication. The ADC IP from Altera is used for signal sampling at 1 MS/s.
 
-The project was developed using **Quartus** with **Questa Intel FPGA Edition** for simulations and tested on a **DE10-Lite development board**.
+The project was developed using **Quartus** with **Questa Intel FPGA Edition** for simulations and implemented on a **DE10-Lite development board**.
 
 ---
 
@@ -44,14 +44,14 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 
 ## Technologies & Tools
 
-* **Verilog HDL**: FPGA design and signal processing
+* **Verilog HDL**: Digital design and signal processing
 * **Quartus**: FPGA synthesis and project management
 * **Questa Intel FPGA Edition**: RTL/gate level simulations and verification
 * **ADC IP (Altera)**: Analog-to-digital conversion at 1 MS/s
 * **DE10-Lite**: FPGA development board
 * **UART**: Communication protocol between FPGA and Python script
 * **Python**: Asynchronous data visualization
-* **Simulation Scripts**: Testbenches and verification for design validation
+* **Simulation Scripts**: Testbenches and tcl scripts for design validation
 
 ---
 
@@ -60,6 +60,7 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 * GitHub: [https://github.com/EvanRJenkins](https://github.com/EvanRJenkins)
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
-I am especially interested in professional opportunities involving FPGA development, digital signal processing, and hardware/software co-design.
+I am especially interested in professional opportunities involving FPGA development and digital signal processing.
+
 
 
