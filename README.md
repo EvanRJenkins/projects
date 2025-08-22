@@ -31,4 +31,4 @@ Each project contains its own directory with source files and detailed instructi
 * GitHub: [https://github.com/EvanRJenkins](https://github.com/EvanRJenkins)
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
-I am particularly interested in pursuing professional opportunities involving FPGA design and development, and I welcome collaboration or discussions in this field.
+**Seeking professional opportunities involving FPGA development and other digital systems.**
