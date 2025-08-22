@@ -46,7 +46,7 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 
 * **Verilog HDL**: FPGA design and signal processing
 * **Quartus**: FPGA synthesis and project management
-* **Questa Intel FPGA Edition**: RTL simulations and verification
+* **Questa Intel FPGA Edition**: RTL/gate level simulations and verification
 * **ADC IP (Altera)**: Analog-to-digital conversion at 1 MS/s
 * **DE10-Lite**: FPGA development board
 * **UART**: Communication protocol between FPGA and Python script
@@ -61,4 +61,5 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
 I am especially interested in professional opportunities involving FPGA development, digital signal processing, and hardware/software co-design.
+
 
