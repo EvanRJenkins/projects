@@ -60,7 +60,8 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 * GitHub: [https://github.com/EvanRJenkins](https://github.com/EvanRJenkins)
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
-I am especially interested in professional opportunities involving FPGA development and digital signal processing.
+**Seeking professional opportunities involving FPGA development and digital signal processing.**
+
 
 
 
