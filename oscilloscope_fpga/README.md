@@ -6,7 +6,7 @@ This project is a digital oscilloscope implemented on an FPGA, designed to captu
 
 ## Features
 
-* Signal capture using FPGA logic
+* Analog signal capture using FPGA logic
 * Trigger-based data acquisition with customizable conditions
 * Frame-based UART transmission of captured data to a host PC
 * Python interface for asynchronous data visualization and plotting
@@ -61,3 +61,4 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
 I am especially interested in professional opportunities involving FPGA development, digital signal processing, and hardware/software co-design.
+
