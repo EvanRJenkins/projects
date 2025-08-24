@@ -14,19 +14,20 @@ samples_voltage = []
 try:
     # collect 2048 samples (2 bytes each little-endian)
     while len(samples_binary) < 2048:
-        if dog.in_waiting >= 2:
-            packet = dog.read(2)
-            binary_sample = int.from_bytes(packet, byteorder="little")
-            
-            # convert to voltage with MAX10 ADC scaling formula
-            voltage = binary_sample * (2.5 / 2**12) * 2
-            voltage = max(0, min(voltage, 5))  # set max range
-            # ignore samples below 0.05 V (arduino inconsistency, remove later)
-            if voltage < 0.05:
-                continue
-            
-            samples_binary.append(binary_sample)
-            samples_voltage.append(voltage)
+    if dog.in_waiting >= 2:
+        packet = dog.read(2)
+        binary_sample = int.from_bytes(packet, byteorder="little")
+        
+        # Ignore zero samples entirely - skip all processing
+        if binary_sample == 0:
+            continue
+        
+        # Only process non-zero samples
+        voltage = binary_sample * (2.5 / 2**12) * 2
+        voltage = max(0, min(voltage, 5))
+        
+        samples_binary.append(binary_sample)
+        samples_voltage.append(voltage)
     
     dog.close()
     print("capture done, plotting...\n")
