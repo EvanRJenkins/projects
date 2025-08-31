@@ -25,6 +25,7 @@ Mainloop 	inc.w  R15 					    ; ++ 1.0 delay counter
 			jmp    Mainloop					; Otherwise repeat ++ cycle
 
 LED2        xor.b  #0x40,&P1OUT 		 	; Toggle 1.6
+			inv.b  R14
 			mov.w  #0x7000,R14 			    ; Reset 1.5 delay counter  
 			jmp    Mainloop 		        ; Repeat ++ cycle
 ;-------------------------------------------------------------------------------
