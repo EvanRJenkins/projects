@@ -1,6 +1,6 @@
 # Projects by Evan Jenkins
 
-Welcome to my collection of hardware and embedded projects! This repository highlights my FPGA-focused work alongside other hardware and embedded systems experiments.
+Welcome to my collection of EE projects! This repository highlights my FPGA-focused work alongside other hardware and embedded systems experiments.
 
 ---
 
