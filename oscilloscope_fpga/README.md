@@ -55,12 +55,19 @@ The Python visualization is **asynchronous** to the FPGA sampling, so it provide
 
 ---
 
+## Note Regarding Results Images
+
+* The posted images of the resulting waveforms show significant jitter. This is a result of how the signal was generated, not how the oscilloscope records it. I don't have access to a signal generator at the moment, so I used Arduino PWM to generate "approximate" waves for demonstration.
+
+---
+
 ## Contact
 
 * GitHub: [https://github.com/EvanRJenkins](https://github.com/EvanRJenkins)
 * Email: [JenkinsE@jbu.edu](mailto:JenkinsE@jbu.edu)
 
 **Seeking professional opportunities involving FPGA development and other digital systems.**
+
 
 
 
