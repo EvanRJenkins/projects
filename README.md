@@ -9,24 +9,24 @@ Welcome to my EE project collection! Here you'll find both personal projects and
 Currently completed projects include:
 
 * **oscilloscope_fpga**
-  A real-time oscilloscope implemented on an FPGA with 1 MS/s sampling capability. Features trigger-based data capture with UART transmission to a Python visualization interface. The design emphasizes system reliability through comprehensive testbenches and proper timing constraints. This project demonstrates signal processing, real-time systems, and FPGA design expertise.
+  A digital oscilloscope implemented on an FPGA with a sampling rate 1 MS/s. Features trigger-based data capture with UART transmission to a Python-controller serial port. The design emphasizes system reliability through comprehensive testbenches and proper timing constraints. This project demonstrates organized, hierarchal design and thorough simulations.
 
 * **automated_garden_watering**
-  An interrupt-driven embedded system built on Arduino platform featuring finite state machine control and sensor integration. Implements non-blocking operation with configurable parameters and robust error handling including timeout safeguards and sleep modes for efficiency.
+  An interrupt-driven embedded system written in C for Arduino Uno. Uses a finite state machine driven by pin-change and hardware timer interrupts. Implements non-blocking operation with configurable parameters and robust error handling including timeout safeguards and sleep modes for reduced power consumption.
 
 * **drop_test_ar200**
-  A precision measurement system using ESP32 with Bluetooth control of solenoid circuits. Achieves 8-micron resolution sampling for displacement analysis. The captured data enabled development of a predictive model with 94% accuracy (R² = 0.94), demonstrating the integration of hardware sensing with data analysis.
+  A precision measurement system using ESP32 (Arduino, not ESP IDF) with Bluetooth control of a solenoid circuit. Achieves 8-micron resolution sampling for displacement analysis. The captured data enabled development of a predictive model with 94% accuracy (R² = 0.94).
 
-Each project contains its own directory with source files and detailed instructions.
+Each project contains its own directory with source files and more details regarding its design process.
 
 ---
 
 ## Technologies & Tools
 
-* **Verilog HDL**: FPGA design, digital signal processing, and real-time data capture
-* **C/C++ & Python**: Embedded programming and data acquisition with visualization capabilities
+* **Verilog HDL**
+* **C/C++ & Python**
 * **Communication Protocols**: UART, I2C, SPI, Modbus, Bluetooth
-* **Hardware Platforms**: FPGA, ESP32, Arduino, with experience in precision measurement systems
+* **Hardware Platforms**: FPGA, ESP32, Arduino
 
 ---
 
