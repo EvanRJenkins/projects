@@ -23,8 +23,8 @@ Each project contains its own directory with source files and more details regar
 
 ## Technologies & Tools
 
-* **Verilog HDL**
 * **C/C++ & Python**
+* **Verilog HDL**
 * **Communication Protocols**: UART, I2C, SPI, Modbus, Bluetooth
 * **Hardware Platforms**: FPGA, ESP32, Arduino
 
