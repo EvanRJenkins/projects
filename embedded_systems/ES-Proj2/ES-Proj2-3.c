@@ -9,7 +9,7 @@ void main(void) {
   volatile unsigned int
       LoopCounter; // "volatile" ensures will not be optimized away
   unsigned char currentState = STATE_OFF;
-  unsigned char flashMod = 3;
+  unsigned char flashMod = 1;
   WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
   P1DIR = LED1;  // Set P1.0 (red LED) to output and P1.3 (button) to input
   P1OUT = ~LED1; // start with LED1 off, LED2 on
@@ -47,11 +47,11 @@ void main(void) {
     case STATE_ON:
       if (P1IN & BIT3) // If button rising edge
       {
-        if (flashMod > 1) // Change flash speed
+        if (flashMod < 3) // Change flash speed
         {
-          --flashMod;
+          ++flashMod;
         } else {
-          flashMod = 3;
+          flashMod = 1;
         }
         P1OUT &= ~BIT0;           // Reset LED
         currentState = STATE_OFF; // Go to off
