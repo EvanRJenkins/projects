@@ -24,168 +24,203 @@ Octave 4 by default
 
 // Song definition
 const unsigned int championMelody[] = {
-    A_SHARP_3_NOTE, F_NOTE,       C_SHARP_NOTE, F_SHARP_NOTE, D_SHARP_NOTE,
-    F_NOTE,         F_SHARP_NOTE, F_NOTE,       C_SHARP_NOTE, D_SHARP_NOTE,
-    F_NOTE,         F_SHARP_NOTE, F_NOTE,       A_SHARP_NOTE, A_NOTE,
-    F_NOTE,         F_NOTE,       D_SHARP_NOTE, E_NOTE,       G_NOTE};
+    A_SHARP_3_NOTE, F_NOTE, C_SHARP_NOTE, F_SHARP_NOTE, D_SHARP_NOTE,
+    F_NOTE, F_SHARP_NOTE, F_NOTE, C_SHARP_NOTE, D_SHARP_NOTE,
+    F_NOTE, F_SHARP_NOTE, F_NOTE, A_SHARP_NOTE, A_NOTE,
+    F_NOTE, F_NOTE, D_SHARP_NOTE, E_NOTE, G_NOTE
+};
 
-const unsigned int championDurations[] = {90, 40, 100, 100, 20, 20, 30,
-                                          20, 80, 20,  20,  30, 20, 30,
-                                          50, 20, 30,  100, 50, 50};
+const unsigned int championDurations[] = {
+    90, 40, 100, 100, 20, 20, 30,
+    20, 80, 20, 20, 30, 20, 30,
+    50, 20, 30, 100, 50, 50
+};
 
 // State enum
-enum E_state { IDLE, PLAY, PAUSE };
+enum E_state
+{
+    IDLE,
+    PLAY,
+    PAUSE
+};
 
 // Function prototypes
-char debounceGoingLow(volatile unsigned char *port, unsigned char pin);
-char debounceGoingHigh(volatile unsigned char *port, unsigned char pin);
-void playNote(volatile unsigned char *port, unsigned char pin,
-              const unsigned int note);
-void playNoteForDuration(volatile unsigned char *port, unsigned char pin,
-                         const unsigned int note, unsigned int duration);
-void myDelay(const unsigned int i);
+char debounceGoingLow( volatile unsigned char *port, unsigned char pin );
+char debounceGoingHigh( volatile unsigned char *port, unsigned char pin );
+void playNote( volatile unsigned char *port, unsigned char pin,
+               const unsigned int note );
+void playNoteForDuration( volatile unsigned char *port, unsigned char pin,
+                          const unsigned int note, unsigned int duration );
+void myDelay( const unsigned int i );
 
-int main(void) {
-  WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
+int main( void )
+{
+    WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
 
-  P1DIR |= BIT4;  // Set P1.4 as output
-  P1OUT &= ~BIT4; // Set P1.4 output low initially
-  P1REN |= BIT3;  // Enable input resistor
-  P1OUT |= BIT3;  // Set pull-up resistor
+    P1DIR |= BIT4;  // Set P1.4 as output
+    P1OUT &= ~BIT4; // Set P1.4 output low initially
+    P1REN |= BIT3;  // Enable input resistor
+    P1OUT |= BIT3;  // Set pull-up resistor
 
-  enum E_state state = IDLE;       // Holds current state
-  unsigned char i = 0;             // Generic loop counter
-  unsigned char currentNote = 0;   // For saving not paused at
-  unsigned int resetCount = 30000; // ~3s Delay
-  // FSM loop
-  while (1) {
-    switch (state) {
+    enum E_state state = IDLE;       // Holds current state
+    unsigned char i = 0;             // Generic loop counter
+    unsigned char currentNote = 0;   // For saving not paused at
+    unsigned int resetCount = 30000; // ~3s Delay
+    // FSM loop
+    while ( 1 )
+    {
+        switch ( state )
+        {
 
-    case IDLE: // Song not playing and not paused
-      while (debounceGoingLow(&P1IN, BIT3)) {
-        ;
-      }
-      while (!debounceGoingLow(&P1IN, BIT3)) {
-        ;
-      }
-      while (!debounceGoingHigh(&P1IN, BIT3)) {
-        ;
-      }
-      state = PLAY;
-      break;
+        case IDLE: // Song not playing and not paused
+            while ( debounceGoingLow( &P1IN, BIT3 ) )
+            {
+                ;
+            }
+            while ( !debounceGoingLow( &P1IN, BIT3 ) )
+            {
+                ;
+            }
+            while ( !debounceGoingHigh( &P1IN, BIT3 ) )
+            {
+                ;
+            }
+            state = PLAY;
+            break;
 
-    case PLAY: // Song playing unless paused or done
+        case PLAY: // Song playing unless paused or done
 
-      for (i = currentNote; i < 20; i++) {
-        playNoteForDuration(&P1OUT, BIT4, championMelody[i],
-                            championDurations[i]);
-        if (debounceGoingLow(&P1IN, BIT3)) {
-          currentNote = i + 1;
-          break;
+            for ( i = currentNote; i < 20; i++ )
+            {
+                playNoteForDuration( &P1OUT, BIT4, championMelody[i],
+                                     championDurations[i] );
+                if ( debounceGoingLow( &P1IN, BIT3 ) )
+                {
+                    currentNote = i + 1;
+                    break;
+                }
+            }
+
+            while ( !debounceGoingHigh( &P1IN, BIT3 ) )
+            {
+                if ( resetCount == 0 )
+                {
+                    i = 0;
+                    currentNote = 0;
+                    resetCount = 0;
+                    state = IDLE;
+                }
+                ++resetCount;
+            }
+            state = PAUSE;
+            break;
+
+        case PAUSE: // Song paused until resumed or reset
+            while ( !debounceGoingLow( &P1IN, BIT3 ) )
+            {
+                ;
+            }
+            while ( !debounceGoingHigh( &P1IN, BIT3 ) )
+            {
+                if ( resetCount == 0 )
+                {
+                    i = 0;
+                    currentNote = 0;
+                    resetCount = 0;
+                    state = IDLE;
+                }
+                ++resetCount;
+            }
+            state = PLAY;
+            break;
         }
-      }
-
-      while (!debounceGoingHigh(&P1IN, BIT3)) {
-        if (resetCount == 0) {
-          i = 0;
-          currentNote = 0;
-          resetCount = 0;
-          state = IDLE;
-        }
-        ++resetCount;
-      }
-      state = PAUSE;
-      break;
-
-    case PAUSE: // Song paused until resumed or reset
-      while (!debounceGoingLow(&P1IN, BIT3)) {
-        ;
-      }
-      while (!debounceGoingHigh(&P1IN, BIT3)) {
-        if (resetCount == 0) {
-          i = 0;
-          currentNote = 0;
-          resetCount = 0;
-          state = IDLE;
-        }
-        ++resetCount;
-      }
-      state = PLAY;
-      break;
     }
-  }
 
-  return 0;
+    return 0;
 }
 
 // Function definitions
-char debounceGoingLow(volatile unsigned char *port, unsigned char pin) {
-  if (!(*port & pin)) {
-    __delay_cycles(10000);
-    if (!(*port & pin)) {
-      return 1;
+char debounceGoingLow( volatile unsigned char *port, unsigned char pin )
+{
+    if ( !( *port & pin ) )
+    {
+        __delay_cycles( 10000 );
+        if ( !( *port & pin ) )
+        {
+            return 1;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
-char debounceGoingHigh(volatile unsigned char *port, unsigned char pin) {
-  if ((*port & pin)) {
-    __delay_cycles(10000);
-    if ((*port & pin)) {
-      return 1;
+char debounceGoingHigh( volatile unsigned char *port, unsigned char pin )
+{
+    if ( ( *port & pin ) )
+    {
+        __delay_cycles( 10000 );
+        if ( ( *port & pin ) )
+        {
+            return 1;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
-void playNote(volatile unsigned char *port, unsigned char pin,
-              const unsigned int note) {
-  unsigned long numCycles;
-  unsigned int j;
-  unsigned long i;
+void playNote( volatile unsigned char *port, unsigned char pin,
+               const unsigned int note )
+{
+    unsigned long numCycles;
+    unsigned int j;
+    unsigned long i;
 
-  numCycles = 50000UL / note; // Scale duration for each note to ~50 (ms)
+    numCycles = 50000UL / note; // Scale duration for each note to ~50 (ms)
 
-  *port &= ~pin; // Start LOW
+    *port &= ~pin; // Start LOW
 
-  for (i = numCycles; i > 0; --i) {
-    *port ^= pin; // Toggle
-    for (j = note / 2; j > 0; --j) {
-      __delay_cycles(1);
+    for ( i = numCycles; i > 0; --i )
+    {
+        *port ^= pin; // Toggle
+        for ( j = note / 2; j > 0; --j )
+        {
+            __delay_cycles( 1 );
+        }
+        *port ^= pin; // Toggle
+        for ( j = note / 2; j > 0; --j )
+        {
+            __delay_cycles( 1 );
+        }
     }
-    *port ^= pin; // Toggle
-    for (j = note / 2; j > 0; --j) {
-      __delay_cycles(1);
-    }
-  }
 
-  *port &= ~pin; // End LOW
+    *port &= ~pin; // End LOW
 }
 
-void playNoteForDuration(volatile unsigned char *port, unsigned char pin,
-                         const unsigned int note, unsigned int duration) {
-  unsigned long totalCycles;
-  unsigned long numCycles;
-  unsigned int j;
-  unsigned long i;
+void playNoteForDuration( volatile unsigned char *port, unsigned char pin,
+                          const unsigned int note, unsigned int duration )
+{
+    unsigned long totalCycles;
+    unsigned long numCycles;
+    unsigned int j;
+    unsigned long i;
 
-  totalCycles = (unsigned long)duration * 1000UL; // 1 MHz
+    totalCycles = ( unsigned long )duration * 1000UL; // 1 MHz
 
-  numCycles = totalCycles / note;
+    numCycles = totalCycles / note;
 
-  *port &= ~pin; // Start LOW
+    *port &= ~pin; // Start LOW
 
-  for (i = numCycles; i > 0; --i) {
-    *port ^= pin; // Toggle
-    for (j = note / 2; j > 0; --j) {
-      __delay_cycles(1);
+    for ( i = numCycles; i > 0; --i )
+    {
+        *port ^= pin; // Toggle
+        for ( j = note / 2; j > 0; --j )
+        {
+            __delay_cycles( 1 );
+        }
+        *port ^= pin; // Toggle
+        for ( j = note / 2; j > 0; --j )
+        {
+            __delay_cycles( 1 );
+        }
     }
-    *port ^= pin; // Toggle
-    for (j = note / 2; j > 0; --j) {
-      __delay_cycles(1);
-    }
-  }
 
-  *port &= ~pin; // End LOW
+    *port &= ~pin; // End LOW
 }
