@@ -8,32 +8,33 @@ factor = half period cycles
 factors are rounded to their nearest integer value
 Octave 4 by default
 */
-#define A_NOTE 1116
-#define A_SHARP_NOTE 1053
-#define B_NOTE 1013
-#define C_NOTE 1911
-#define C_SHARP_NOTE 1804
-#define D_NOTE 1703
-#define D_SHARP_NOTE 1607
-#define E_NOTE 1517
-#define F_NOTE 1432
-#define F_SHARP_NOTE 1351
-#define G_NOTE 1276
-#define G_SHARP_NOTE 1204
-#define A_SHARP_3_NOTE 2272
+#define C_NOTE        1911
+#define C_SHARP_NOTE  1804
+#define D_NOTE        1703
+#define D_SHARP_NOTE  1607
+#define E_NOTE        1517
+#define F_NOTE        1432
+#define F_SHARP_NOTE  1352
+#define G_NOTE        1276
+#define G_SHARP_NOTE  1204
+#define A_NOTE        1136
+#define A_SHARP_NOTE  1075
+#define B_NOTE        1013
+#define A_SHARP_3_NOTE 2145
+
 
 // Song definition
 const unsigned int championMelody[] = {
     A_SHARP_3_NOTE, F_NOTE, C_SHARP_NOTE, F_SHARP_NOTE, D_SHARP_NOTE,
     F_NOTE, F_SHARP_NOTE, F_NOTE, C_SHARP_NOTE, D_SHARP_NOTE,
-    F_NOTE, F_SHARP_NOTE, F_NOTE, A_SHARP_NOTE, A_NOTE,
+    F_NOTE, F_SHARP_NOTE, F_NOTE, A_SHARP_NOTE, G_SHARP_NOTE,
     F_NOTE, F_NOTE, D_SHARP_NOTE, E_NOTE, G_NOTE
 };
 
 const unsigned int championDurations[] = {
-    90, 40, 100, 100, 20, 20, 30,
-    20, 80, 20, 20, 30, 20, 30,
-    50, 20, 30, 100, 50, 50
+    180, 80, 200, 200, 40, 40, 60,
+40, 160, 40, 40, 60, 40, 60,
+100, 40, 60, 200, 100, 100
 };
 
 // State enum
@@ -133,6 +134,7 @@ int main( void )
             }
             state = PLAY;
             break;
+            
         }
     }
 
@@ -211,12 +213,12 @@ void playNoteForDuration( volatile unsigned char *port, unsigned char pin,
     for ( i = numCycles; i > 0; --i )
     {
         *port ^= pin; // Toggle
-        for ( j = note / 2; j > 0; --j )
+        for ( j = note / 4; j > 0; --j )
         {
             __delay_cycles( 1 );
         }
         *port ^= pin; // Toggle
-        for ( j = note / 2; j > 0; --j )
+        for ( j = note / 4; j > 0; --j )
         {
             __delay_cycles( 1 );
         }
