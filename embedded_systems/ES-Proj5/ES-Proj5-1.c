@@ -1,13 +1,13 @@
 #include <msp430g2553.h>
 
-const unsigned int current_speed[10] = { 60000, 55000, 45000, 35000, 25000,
-                                        15000, 8000,  4000,  2000,  1000 };
+const unsigned int current_speed[10] = {60000, 55000, 45000, 35000, 25000,
+                                        15000, 8000,  4000,  2000,  1000};
 
 volatile unsigned int speed_index = 0;
 volatile unsigned int toggle_count = 0;
 
 #define RED_DELAY 20000
-#define NUM_TOGGLES 20
+#define NUM_TOGGLES 40
 #define OVERFLOW_FLAG 0x0A
 
 void main(void) {
@@ -16,8 +16,7 @@ void main(void) {
   P1DIR |= (BIT0 | BIT6); // Set LEDs to output direction
   P1OUT &= ~(BIT0 | BIT6);
 
-  TACTL = TASSEL_2 + MC_1 + TACLR +
-    TAIE; // Use SMCLK, Up Mode, clear TAR, enable interrupt
+  TACTL = TASSEL_2 + MC_1 + TACLR + TAIE; // Use SMCLK, Up Mode, clear TAR, enable interrupt
 
   TACCR0 = current_speed[0]; // Init green LED toggle speed
 
