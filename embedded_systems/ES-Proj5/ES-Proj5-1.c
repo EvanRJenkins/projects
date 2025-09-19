@@ -49,8 +49,7 @@ __interrupt void TIMER_ISR(void) {
         speed_index = 0;
       }
 
-      TACCR0 =
-          current_speed[speed_index];  // Update the timer's period register
+      TACCR0 = current_speed[speed_index];  // Update timer period
     }
   }
 }
