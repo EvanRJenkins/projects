@@ -1,6 +1,13 @@
 #include <msp430g2553.h>
 
-volatile unsigned char current_program = 1;
+typedef enum {
+  PROGRAM_1,
+  PROGRAM_2,
+  PROGRAM_3
+} program_t;
+
+
+volatile program_t current_program = PROGRAM_1;
 volatile unsigned int current_program_time =
     40; // 40 * 250 ms = approx. 10 seconds
 
@@ -21,7 +28,7 @@ void main(void) {
 
   while (1) {
     switch (current_program) {
-    case 1:
+    case PROGRAM_1:
       blink_indicator(1);
       TACTL = TASSEL_2 + TACLR; // Pause timer A
       while (current_program == 1) {
@@ -30,7 +37,7 @@ void main(void) {
       }
       break;
 
-    case 2:
+    case PROGRAM_2:
       blink_indicator(2);
       // Configure Timer_A with SMCLK (1 MHz) and /8 divider
       TACTL =
@@ -40,7 +47,7 @@ void main(void) {
       // Enter LPM0
       break;
 
-    case 3:
+    case PROGRAM_3:
       blink_indicator(3);
       // Configure Timer_A with ACLK (12 kHz)
       TACTL = TASSEL_1 + MC_1 + TACLR;    // ACLK, Up Mode, Clear
