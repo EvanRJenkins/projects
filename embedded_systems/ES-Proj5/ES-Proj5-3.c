@@ -1,11 +1,6 @@
 #include <msp430g2553.h>
 
-typedef enum {
-  PROGRAM_1,
-  PROGRAM_2,
-  PROGRAM_3
-} program_t;
-
+typedef enum { PROGRAM_1, PROGRAM_2, PROGRAM_3, RESET_PROGRAM } program_t;
 
 volatile program_t current_program = PROGRAM_1;
 volatile unsigned int current_program_time =
@@ -44,16 +39,16 @@ void main(void) {
           TASSEL_2 + MC_1 + TACLR + ID_3; // SMCLK, Up Mode, Clear, /8 divider
       TACCR0 = 62500;                     // 500ms period for blinking
       TACCTL0 = CCIE;                     // Enable CCR0 interrupt
-      // Enter LPM0
+      __low_power_mode_0();               // Enter LPM0
       break;
 
     case PROGRAM_3:
       blink_indicator(3);
       // Configure Timer_A with ACLK (12 kHz)
-      TACTL = TASSEL_1 + MC_1 + TACLR;    // ACLK, Up Mode, Clear
-      TACCR0 = 6000;                      // 500ms period for blinking
-      TACCTL0 = CCIE;                     // Enable CCR0 interrupt
-      // Enter LPM3
+      TACTL = TASSEL_1 + MC_1 + TACLR; // ACLK, Up Mode, Clear
+      TACCR0 = 6000;                   // 500ms period for blinking
+      TACCTL0 = CCIE;                  // Enable CCR0 interrupt
+      __low_power_mode_3();            // Enter LPM3
       break;
     }
   }
@@ -75,10 +70,10 @@ __interrupt void WDT_ISR(void) {
   if (current_program_time == 0) {
     current_program_time = 40; // Reset
     current_program++;
-    if (current_program > 3) {
-      current_program = 1;
+    if (current_program > PROGRAM_3) {
+      current_program = PROGRAM_1;
     }
-    // Wake up CPU
+    _low_power_mode_off_on_exit(); // Wake up CPU
   }
 }
 
