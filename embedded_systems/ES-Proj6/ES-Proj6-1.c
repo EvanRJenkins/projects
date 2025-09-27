@@ -7,9 +7,9 @@ unsigned int pwm_set_duration(unsigned char duration_percent);
 
 #define DURATION_PERCENT DURATION_MS * 2  // At 1 MHz, abt 1 ms pulse
 
-typedef enum { SLOW, FAST } speed_t;
+typedef enum { OFF, SLOW, FAST } speed_t;
 
-volatile speed_t current_speed = SLOW;
+volatile speed_t current_speed = OFF;
 
 void main(void)
 {
@@ -30,11 +30,7 @@ void main(void)
     P1DIR |= BIT6;  // Init P1.6 to output
     P1OUT &= ~BIT6;  // Start with the pin LOW
 
-    TACCR0 = 20000;  // Initialize CCR0 (Duration)
-
-    TACCR1 = 10000;  // Initialize CCR1 (Duty cycle)
-
-    // Enable capture interrupts
+    // Disable capture interrupts
     TACCTL0 = CCIE;
     TACCTL1 = CCIE;
 
@@ -48,18 +44,37 @@ void main(void)
     {
         switch (current_speed)
         {
+            case OFF:
+                TACTL &= ~MC_3;     // Stop timer
+                TACCTL0 &= ~CCIE;   // Disable CCR0 interrupt
+                TACCTL1 &= ~CCIE;   // Disable CCR1 interrupt
+                P1OUT &= ~BIT6;     // PWM LOW
+                break;
+
             case SLOW:
                 TACCR0 = pwm_set_duration(DURATION_PERCENT);  // About 4 ms duration
                 TACCR1 = (TACCR0 / 100) * DUTY_PERCENT_SLOW;  // Set duty proportional to duration
+                
+                // Enable interrupts
+                TACCTL0 |= CCIE;  
+                TACCTL1 |= CCIE;
+                
+                TACTL |= MC_1;  // Start timer in up mode
                 break;
             
             case FAST:
                 TACCR0 = pwm_set_duration(DURATION_PERCENT);  // About 4 ms duration
                 TACCR1 = (TACCR0 / 100) * DUTY_PERCENT_FAST;  // Set duty proportional to duration
+
+                // Enable interrupts
+                TACCTL0 |= CCIE;  
+                TACCTL1 |= CCIE;
+                
+                TACTL |= MC_1;  // Start timer in up mode
                 break;
 
             default:
-                current_speed = SLOW;
+                current_speed = OFF;
                 break;
         }
     }
@@ -112,7 +127,7 @@ __interrupt void WDT_ISR(void) {
 
     // On a valid, debounced button release, perform the action
     if (((P1IES & BIT3) == 0) && (P1IN & BIT3)) {
-        ++current_speed; // Toggle the speed state
+        current_speed = (speed_t)((current_speed + 1) % 3); // Cycle the speed state
         P1OUT ^= BIT0;   // Toggle indicator LED
     }
 
