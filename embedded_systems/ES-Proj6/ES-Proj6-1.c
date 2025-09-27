@@ -1,6 +1,7 @@
 #include <msp430g2553.h>
 
-pwm_set(unsigned char duration_ms, unsigned char duty_cycle_percent);
+unsigned int pwm_set_duration(unsigned char duration_percent);
+unsigned int pwm_set_duty(unsigned char duty_percent);
 
 void main(void)
 {
@@ -8,10 +9,8 @@ void main(void)
     WDTCTL = WDTPW | WDTHOLD;
 
     // Set the DCO to 1MHz
-    DCOCTL = 0;
-    BCSCTL1 = CALBC1_1MHZ;
-    DCOCTL = CALDCO_1MHZ;
-    //BCSCTL2 = DIVM_3;
+    BCSCTL2 = ~SELS;  // Set SMCLK to DCO
+    DCOCTL = CALDCO_1MHZ;    // Set DCO to minimum frequency
 
     P1DIR |= BIT6;  // Init P1.6 to output
     P1OUT &= ~BIT6;  // Start with the pin LOW
@@ -24,22 +23,28 @@ void main(void)
     TACCTL0 = CCIE;
     TACCTL1 = CCIE;
 
-    // Use SMCLK (1 MHz DCO), up mode, clear timer
+    // Use SMCLK (VLO), up mode, clear timer
     TACTL = TASSEL_2 | MC_1 | TACLR;
 
+    TACCR0 = pwm_set_duration(20);
+
+    TACCR1 = (TACCR0 / 100) * 50;  // Set duty proportional to duration
 
     __bis_SR_register(LPM0_bits | GIE);  // LPM0 and enable interrupts
 }
 
-pwm_set(unsigned char duration_ms, unsigned char duty_cycle_percent)
+unsigned int pwm_set_duration(unsigned char duration_percent)
 {
-  unsigned int duration_counts = duration_ms * 1000;
-  unsigned int percent_counts = duration_ms * duty_cycle_percent / 100;
+    if (duration_percent >= 100)
+    {
+        return 65535;
+    }
 
-  TACCR0 = duration_counts;  // Initialize CCR0 (Duration)
+    return ((65535 / 100) * duration_percent);
 
-  TACCR1 = percent_counts;  // Initialize CCR1 (Duty cycle)
 }
+
+
 
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR (void)
