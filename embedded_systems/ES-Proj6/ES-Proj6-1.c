@@ -99,11 +99,24 @@ __interrupt void TIMER0_A1_ISR (void)
 
 #pragma vector = PORT1_VECTOR
 __interrupt void Port_1_ISR(void) {
-    if ((P1IES & BIT3) == 0) {   // Check if triggered by rising edge
-        current_speed = !current_speed; // Toggle speed
+    P1IE &= ~BIT3;             // Disable button interrupt
+    WDTCTL = WDT_MDLY_0_064;      // Start WDT interval
+    IE1 |= WDTIE;              // Enable WDT interrupt
+    P1IFG &= ~BIT3;            // Clear button flag
+}
+
+#pragma vector = WDT_VECTOR  // For debounce without Timer_A
+__interrupt void WDT_ISR(void) {
+    IE1 &= ~WDTIE;             // Disable WDT interrupt
+    WDTCTL = WDTPW | WDTHOLD;  // Stop WDT
+
+    // On a valid, debounced button release, perform the action
+    if (((P1IES & BIT3) == 0) && (P1IN & BIT3)) {
+        ++current_speed; // Toggle the speed state
+        P1OUT ^= BIT0;   // Toggle indicator LED
     }
 
-    P1IES ^= BIT3;
-
-    P1IFG &= ~BIT3;
+    P1IES ^= BIT3;             // Toggle interrupt edge
+    P1IE |= BIT3;              // Enable button interrupt
+    IFG1 &= ~WDTIFG;           // Clear WDT flag
 }
