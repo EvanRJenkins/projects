@@ -92,9 +92,13 @@ __interrupt void WDT_ISR(void)
     // On button release, toggle position
     if ((P1IN & BIT3) && !(P1IES & BIT3))
     {
-        current_position = (current_position == POSITION_LEFT)
-                           ? POSITION_RIGHT
-                           : POSITION_LEFT;
+      if (current_position == POSITION_LEFT)
+      {
+        current_position = POSITION_RIGHT;
+      }
+      else {
+        current_position = POSITION_LEFT;
+      }
     }
 
     P1IES ^= BIT3;             // Toggle interrupt edge
