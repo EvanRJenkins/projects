@@ -11,7 +11,6 @@ typedef enum {
 
 volatile servo_position_t current_position = POSITION_LEFT;
 
-// === Function Prototypes ===
 void pwm_set_position(servo_position_t position);
 void debounce_start(void);
 
