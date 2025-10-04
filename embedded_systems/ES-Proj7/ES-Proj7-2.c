@@ -86,7 +86,6 @@ __interrupt void TIMER0_A0_ISR(void)
     if (!(P1IN & BIT3))  // Button still pressed (active low)
     {
         button_count++;
-        P1OUT ^= BIT0;
         send_message();
     }
 
