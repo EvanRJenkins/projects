@@ -16,7 +16,7 @@ void main(void)
     DCOCTL = CALDCO_1MHZ;
     BCSCTL1 = CALBC1_1MHZ;
 
-    // Configure LEDs on P1.0 (red) and P1.6 (green)
+    // Configure LEDs
     P1DIR |= BIT0 | BIT6;     // Outputs
     P1OUT &= ~(BIT0 | BIT6);  // Initially off
 
