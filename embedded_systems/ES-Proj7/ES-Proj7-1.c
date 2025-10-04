@@ -2,7 +2,7 @@
 
 // UART baud rate configuration
 #define BAUD_RATE 9600
-#define SMCLK_FREQ    1000000  // SMCLK = 1 MHz
+#define CLK_FREQ    1000000  // SMCLK = 1 MHz
 
 volatile char rx_char = 0;
 
@@ -26,8 +26,8 @@ void main(void)
 
     // Configure USCI_A0 for UART
     UCA0CTL1 |= UCSSEL_2;     // SMCLK
-    UCA0BR0 = (SMCLK_FREQ / BAUD_RATE) & 0xFF; 
-    UCA0BR1 = (SMCLK_FREQ / BAUD_RATE) >> 8;
+    UCA0BR0 = (CLK_FREQ / BAUD_RATE) & 0xFF; 
+    UCA0BR1 = (CLK_FREQ / BAUD_RATE) >> 8;
     UCA0MCTL = UCBRS0;        // Modulation
     UCA0CTL1 &= ~UCSWRST;     // Initialize USCI
 
