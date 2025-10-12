@@ -1,10 +1,7 @@
 #include <msp430.h>
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
-#define READ_ADDR 0xE0
 
-volatile unsigned char RXData[3];
-volatile unsigned char done = 0;
 
 void main(void)
 {
@@ -22,7 +19,7 @@ void main(void)
     UCB0CTL1 |= UCSWRST;                     // Enable SW reset
     UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;
     UCB0CTL1 = UCSSEL_2 | UCSWRST;           // SMCLK
-    UCB0BR0 = 12;                            // 100kHz
+    UCB0BR0 = 20;
     UCB0BR1 = 0;
     UCB0I2CSA = SLAVE_ADDR;                  // Slave Address
     UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
@@ -34,10 +31,10 @@ void main(void)
     while (1)
   {
     
-    while (UCB0CTL1 & UCTXSTP);             // Ensure stop condition got sent
+    while ((UCB0CTL1 & UCTXSTP));             // Ensure stop condition got sent
+    
     UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
     __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
-    done = 1;
   }
 
 
@@ -47,11 +44,5 @@ void main(void)
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
-  UCB0TXBUF = READ_ADDR;
-  if (done)
-  {
-    UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
-  }
-  IFG2 &= ~UCB0TXIFG;                     // Clear USCI_B0 TX int flag
-  __bic_SR_register_on_exit(CPUOFF);      // Exit LPM0
+
 }
