@@ -1,9 +1,10 @@
 #include <msp430.h>
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
+#define READ_ADDR 0xE0
 
 volatile unsigned char RXData[3];
-volatile unsigned char data_index = 0;
+volatile unsigned char done = 0;
 
 void main(void)
 {
@@ -19,37 +20,38 @@ void main(void)
 
     // USCI_B0 setup
     UCB0CTL1 |= UCSWRST;                     // Enable SW reset
-    UCB0CTL0 = UCMST | UCMODE_3 | UCSYNC;    // I2C master, sync mode
+    UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;
     UCB0CTL1 = UCSSEL_2 | UCSWRST;           // SMCLK
-    UCB0BR0 = 10;                            // 100kHz
+    UCB0BR0 = 12;                            // 100kHz
     UCB0BR1 = 0;
     UCB0I2CSA = SLAVE_ADDR;                  // Slave Address
     UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
-    IE2 |= UCB0RXIE;                         // Enable RX interrupt
+    IE2 |= UCB0TXIE;                         // Enable TX interrupt
 
-    data_index = 0;
+    
 
-    // Start read operation
-    UCB0CTL1 &= ~UCTR;   // Receiver mode
-    UCB0CTL1 |= UCTXSTT; // Send START
+    UCB0CTL1 |= UCTR;   // TX mode
+    while (1)
+  {
+    
+    while (UCB0CTL1 & UCTXSTP);             // Ensure stop condition got sent
+    UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
+    __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
+    done = 1;
+  }
 
-    __bis_SR_register(CPUOFF + GIE); // Enter LPM0 w/ interrupts
 
-    // Done receiving
-    __no_operation(); // Breakpoint here to check RXData[]
 }
 
 // USCI_B0 RX ISR
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
-  if (UCB0RXBUF != 0xFF)
+  UCB0TXBUF = READ_ADDR;
+  if (done)
   {
-    RXData[data_index++] = UCB0RXBUF;
+    UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
   }
-    if (data_index > 2) {
-        UCB0CTL1 |= UCTXSTP;                  // Send STOP
-        IFG2 &= ~UCB0RXIFG;                   // Clear flag
-        __bic_SR_register_on_exit(CPUOFF);    // Wake up
-    }
+  IFG2 &= ~UCB0TXIFG;                     // Clear USCI_B0 TX int flag
+  __bic_SR_register_on_exit(CPUOFF);      // Exit LPM0
 }
