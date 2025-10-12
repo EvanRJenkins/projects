@@ -1,7 +1,7 @@
 #include <msp430.h>
 
-#define SLAVE_ADDR  0x3A     // I2C slave address
-#define READ_ADDR 0xE1      // EEPROM start read address
+#define WRITE_ADDR  0x50     // Device address for a write operation
+#define READ_ADDR 0x51      // Device address for a read operation
 
 
 volatile unsigned char RXData[4];  // Array to store secret code chars
@@ -30,11 +30,11 @@ void main(void)
     UCB0CTL1  = UCSSEL_2 | UCSWRST;        // SMCLK source
     UCB0BR0   = 10;                // 1 MHz / 10 = 100 kHz SCL
     UCB0BR1   = 0;
-    UCB0I2CSA = SLAVE_ADDR;        // Set Slave address
+    UCB0I2CSA = WRITE_ADDR;        // Set Slave address
     UCB0CTL1 &= ~UCSWRST;          // Release USCI for operation
 
     // ----- Generate START and address -----
-    UCB0CTL1 &= ~UCTR;      // RX mode 
+    UCB0CTL1 |= UCTR;      // TX mode 
     UCB0CTL1 |= UCTXSTT;    // START condition
     while (UCB0CTL1 & UCTXSTT);    // Wait for START to finish (address sent)
 
