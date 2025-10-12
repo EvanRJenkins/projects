@@ -3,8 +3,10 @@
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
 #define READ_ADDR 0xE0
 
-volatile unsigned char RXData[3];
-volatile unsigned char done = 0;
+
+typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA} state_t;
+
+volatile state_t current_state = DUMMY_WRITE;
 
 void main(void)
 {
@@ -34,10 +36,28 @@ void main(void)
     while (1)
   {
     
-    while (UCB0CTL1 & UCTXSTP);             // Ensure stop condition got sent
-    UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
-    __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
-    done = 1;
+    switch (current_state)
+    {
+
+      case DUMMY_WRITE:
+        UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
+        __bis_SR_register(CPUOFF + GIE);  // Enter LPM0 w/ interrupts
+        break;
+
+      case SEND_ADDR:
+
+        __bis_SR_register(CPUOFF + GIE);  // Enter LPM0 w/ interrupts
+        break;
+
+      case READ_DATA:
+        UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
+        break;
+
+      default:
+
+        break;
+    }
+
   }
 
 
@@ -47,11 +67,17 @@ void main(void)
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
-  UCB0TXBUF = READ_ADDR;
-  if (done)
+  switch (current_state)
   {
-    UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
+    case DUMMY_WRITE:
+      UCB0TXBUF = READ_ADDR;
+      current_state = SEND_ADDR;
+      break;
+    case SEND_ADDR:
+      current_state = READ_DATA;
+      break;
   }
+
   IFG2 &= ~UCB0TXIFG;                     // Clear USCI_B0 TX int flag
   __bic_SR_register_on_exit(CPUOFF);      // Exit LPM0
 }
