@@ -5,7 +5,7 @@
 typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA, DONE} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
-volatile unsigned char RXData[] = {0, 0, 0};
+volatile unsigned char RXData[3] = {0, 0, 0};
 volatile unsigned char RXCount = 0;
 
 void main(void)
@@ -21,87 +21,118 @@ void main(void)
     P1SEL2 |= BIT6 | BIT7;
 
     // USCI_B0 setup
-    UCB0CTL1 |= UCSWRST;                     // Enable SW reset
-    UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;    // I2C Master, synchronous
-    UCB0CTL1 = UCSSEL_2 | UCSWRST;           // Use SMCLK
-    UCB0BR0 = 20;                            // ~100kHz
+    UCB0CTL1 |= UCSWRST;                      // Enable SW reset
+    UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;      // I2C Master, synchronous
+    UCB0CTL1 = UCSSEL_2 | UCSWRST;            // Use SMCLK
+    UCB0BR0 = 20;                             // ~100kHz
     UCB0BR1 = 0;
-    UCB0I2CSA = SLAVE_ADDR;                  // Slave Address
-    UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
-    IE2 |= UCB0TXIE;                         // Enable TX interrupt
+    UCB0I2CSA = SLAVE_ADDR;                   // Slave Address
+    UCB0CTL1 &= ~UCSWRST;                     // Clear SW reset
+
+    IE2 |= UCB0TXIE;                          // Enable TX interrupt
+
+    // Button Setup
+    P1DIR &= ~BIT3;     // Set P1.3 to input direction
+    P1REN |= BIT3;      // Enable internal pull-up/down resistor for P1.3
+    P1OUT |= BIT3;      // Set resistor to pull-up
+    P1IE |= BIT3;       // P1.3 interrupt enabled
+    P1IES |= BIT3;      // P1.3 Hi/lo edge
+    P1IFG &= ~BIT3;     // P1.3 IFG cleared
+    
+
+    // Go to low-power button press
+    __bis_SR_register(LPM3_bits + GIE);
+    __no_operation();
 
     while (1)
     {
         switch (current_state)
         {
             case DUMMY_WRITE:
+                RXCount = 0;
                 UCB0CTL1 |= UCTR + UCTXSTT;    // TX mode + START condition
-                __bis_SR_register(CPUOFF + GIE);
+                __bis_SR_register(GIE);
                 break;
 
             case SEND_ADDR:
-                __bis_SR_register(CPUOFF + GIE);
+                __bis_SR_register(GIE);
                 break;
 
             case READ_DATA:
-                IE2 &= ~UCB0TXIE;              // Disable TX interrupt
-                IE2 |= UCB0RXIE;               // Enable RX interrupt
-                UCB0CTL1 &= ~UCTR;             // Switch to RX mode
-                UCB0CTL1 |= UCTXSTT;           // Repeated START
+                IE2 &= ~UCB0TXIE;           // Disable TX interrupt
+                IE2 |= UCB0RXIE;            // Enable RX interrupt
+                UCB0CTL1 &= ~UCTR;          // Switch to RX mode
+                if (RXCount == 0)
+                {
 
-                // Wait for START to complete before issuing STOP
-                while (UCB0CTL1 & UCTXSTT);    // Wait until STT cleared
-                if (RXCount == 3)
+                UCB0CTL1 |= UCTXSTT;        // START
+                }
+
+                while (UCB0CTL1 & UCTXSTT)    // Wait for START to complete
                 {
-                    UCB0CTL1 |= UCTXSTP;           // Send STOP
-                    current_state = DONE;
-                    __bis_SR_register(CPUOFF + GIE);
+                ;
                 }
-                else {
-                {
-                    ++RXCount;
-                    UCB0CTL1 |= UCTXSTT;           // Repeated START
-                    __bis_SR_register(CPUOFF + GIE);
-                }
-                }
+                __bis_SR_register(GIE);
+                __bis_SR_register(LPM0_bits);
+
                 break;
 
             case DONE:
-                __no_operation();              // RXData has the data now
+                IE2 &= ~UCB0RXIE;
+                unsigned char temp[] = {RXData[0], RXData[1], RXData[2]};
+                __bis_SR_register(LPM0_bits);
                 break;
         }
     }
 }
 
-// USCI_B0 ISR
+// USCI_B0 TX ISR
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
     switch (current_state)
     {
         case DUMMY_WRITE:
-            UCB0TXBUF = READ_ADDR;   // Send EEPROM word address
+            UCB0TXBUF = READ_ADDR;   // Send EEPROM memory address
             current_state = SEND_ADDR;
             break;
 
         case SEND_ADDR:
             current_state = READ_DATA;
             break;
-
-        default:
-            break;
     }
 
-    IFG2 &= ~UCB0TXIFG;                 // Clear TX flag
-    __bic_SR_register_on_exit(CPUOFF); // Exit LPM0
+    IFG2 &= ~UCB0TXIFG;              // Clear TX flag
 }
 
-// USCI_B0 RX ISR
 #pragma vector = USCIAB0RX_VECTOR
 __interrupt void USCIAB0RX_ISR(void)
 {
-    RXData[RXCount] = UCB0RXBUF;                 // Read received byte
+    // Read the byte from the buffer
+    RXData[RXCount] = UCB0RXBUF;
 
-    IFG2 &= ~UCB0RXIFG;                 // Clear RX flag
-    __bic_SR_register_on_exit(CPUOFF); // Exit LPM0
+    if (RXCount == 1) {
+
+        UCB0CTL1 |= UCTXSTP;
+    }
+
+
+    RXCount++;
+
+    IFG2 &= ~UCB0RXIFG;
+
+    if (RXCount == 2) {
+        // After the 3rd data is read
+        current_state = DONE;
+    }
+    __bic_SR_register(LPM0_bits);
+}
+
+
+// Button ISR for debugging
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void)
+{
+    P1IFG &= ~BIT3;
+    __bic_SR_register_on_exit(LPM3_bits);
 }
