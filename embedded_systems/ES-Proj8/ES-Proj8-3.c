@@ -3,11 +3,11 @@
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
 #define READ_ADDR 0xE0
 
-
 typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA, DONE} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
 volatile unsigned char RXData;
+
 void main(void)
 {
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
@@ -30,45 +30,32 @@ void main(void)
     UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
     IE2 |= UCB0TXIE;                         // Enable TX interrupt
 
-    
-
-    UCB0CTL1 |= UCTR;   // TX mode
+    UCB0CTL1 |= UCTR;  // TX mode
     while (1)
-  {
-    
+    {
     switch (current_state)
     {
-
       case DUMMY_WRITE:
-        UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
-        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
+        UCB0CTL1 |= UCTR + UCTXSTT;  // I2C TX, start condition
+        __bis_SR_register(GIE);
         break;
 
       case SEND_ADDR:
-        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
+        __bis_SR_register(GIE);
         break;
 
       case READ_DATA:
-
         UCB0CTL1 |= UCTXSTP;           // I2C stop condition
         IE2 &= ~UCB0TXIE;              // Disable TX interrupt
         IE2 &= ~UCB0TXIE;              // Enable RX interrupt
         UCB0CTL1 &= ~UCTR;             // RX mode
         UCB0CTL1 |= UCTXSTT;           // Start Condition
-
         break;
 
       case DONE:
         UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
-
-      default:
-
-        break;
     }
-
   }
-
-
 }
 
 // USCI_B0 RX ISR
@@ -88,7 +75,5 @@ __interrupt void USCIAB0TX_ISR(void)
       RXData = UCB0RXBUF;
       break;
   }
-
-  IFG2 &= ~UCB0TXIFG;                     // Clear USCI_B0 TX int flag
-  
+  IFG2 &= ~UCB0TXIFG;  // Clear USCI_B0 TX int flag
 }
