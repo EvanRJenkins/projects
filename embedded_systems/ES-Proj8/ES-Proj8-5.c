@@ -1,11 +1,11 @@
 #include <msp430.h>
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C EEPROM address
-#define READ_ADDR  0xE0
+#define READ_ADDR  0xE0  // 8-bit EEPROM word address
 typedef enum {DUMMY_WRITE, SEND_ADDR, RESTART, RX, DONE} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
-volatile unsigned char RXData[] = {0, 0, 0, 0};
+volatile unsigned char RXData[] = {0, 0, 0};  // Storage for RX bytes
 volatile unsigned char RXCount = 0;
 
 void main(void)
@@ -51,11 +51,9 @@ void main(void)
             case DUMMY_WRITE:
                 RXCount = 0;
                 UCB0CTL1 |= UCTR + UCTXSTT;    // TX mode + START condition
-                //__bis_SR_register(GIE);
                 break;
 
             case SEND_ADDR:
-                //__bis_SR_register(GIE);
                 break;
 
             case RESTART:
@@ -64,15 +62,6 @@ void main(void)
                 UCB0CTL1 &= ~UCTR;          // Switch to RX mode
                 current_state = RX;
                 UCB0CTL1 |= UCTXSTT;        // START
-
-
-                //while (UCB0CTL1 & UCTXSTT)    // Wait for START to complete
-                //{
-                //;
-                //}
-                //__bis_SR_register(GIE);
-
-
                 break;
 
             case RX:
@@ -112,20 +101,8 @@ __interrupt void USCIAB0TX_ISR(void)
             ++RXCount;
             break;
     }
-
     IFG2 &= ~UCB0TXIFG;              // Clear TX flag
 }
-
-/*#pragma vector = USCIAB0RX_VECTOR
-__interrupt void USCIAB0RX_ISR(void)
-{
-    // Read the byte from the buffer
-    RXData[RXCount] = UCB0RXBUF;
-    ++RXCount;
-    IFG2 &= ~UCB0RXIFG;
-
-}*/
-
 
 // Button ISR for debugging
 #pragma vector=PORT1_VECTOR
