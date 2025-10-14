@@ -41,12 +41,12 @@ void main(void)
 
       case DUMMY_WRITE:
         UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
-        __bis_SR_register(CPUOFF + GIE);  // Enter LPM0 w/ interrupts
+        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
         break;
 
       case SEND_ADDR:
 
-        __bis_SR_register(CPUOFF + GIE);  // Enter LPM0 w/ interrupts
+        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
         break;
 
       case READ_DATA:
@@ -79,5 +79,5 @@ __interrupt void USCIAB0TX_ISR(void)
   }
 
   IFG2 &= ~UCB0TXIFG;                     // Clear USCI_B0 TX int flag
-  __bic_SR_register_on_exit(CPUOFF);      // Exit LPM0
+
 }
