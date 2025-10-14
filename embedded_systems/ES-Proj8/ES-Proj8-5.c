@@ -2,7 +2,7 @@
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C EEPROM address
 #define READ_ADDR  0xE0
-typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA, DONE} state_t;
+typedef enum {DUMMY_WRITE, SEND_ADDR, RESTART, RX, DONE} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
 volatile unsigned char RXData[] = {0, 0, 0, 0};
@@ -58,28 +58,34 @@ void main(void)
                 //__bis_SR_register(GIE);
                 break;
 
-            case READ_DATA:
+            case RESTART:
                 IE2 &= ~UCB0TXIE;           // Disable TX interrupt
                 IE2 |= UCB0RXIE;            // Enable RX interrupt
                 UCB0CTL1 &= ~UCTR;          // Switch to RX mode
-                if (RXCount++ == 0)
-                {
-                RXCount++;
+                current_state = RX;
                 UCB0CTL1 |= UCTXSTT;        // START
-                }
 
-                while (UCB0CTL1 & UCTXSTT)    // Wait for START to complete
-                {
-                ;
-                }
+
+                //while (UCB0CTL1 & UCTXSTT)    // Wait for START to complete
+                //{
+                //;
+                //}
                 //__bis_SR_register(GIE);
-                //__bis_SR_register(LPM0_bits);
 
+
+                break;
+
+            case RX:
+                if (RXCount == 1) 
+                {
+                UCB0CTL1 |= UCTXSTP;
+                current_state = DONE;
+                }
                 break;
 
             case DONE:
                 IE2 &= ~UCB0RXIE;
-                //__bis_SR_register(LPM0_bits);
+                __bis_SR_register(LPM0_bits);
                 break;
         }
     }
@@ -97,7 +103,7 @@ __interrupt void USCIAB0TX_ISR(void)
             break;
 
         case SEND_ADDR:
-            current_state = READ_DATA;
+            current_state = RESTART;
             break;
     }
 
@@ -109,22 +115,9 @@ __interrupt void USCIAB0RX_ISR(void)
 {
     // Read the byte from the buffer
     RXData[RXCount] = UCB0RXBUF;
+    ++RXCount;
     IFG2 &= ~UCB0RXIFG;
 
-    if (RXCount == 2) {
-      UCB0CTL1 |= UCTXSTP;
-      IFG2 &= ~UCB0RXIFG;
-    }
-
-
-    RXCount++;
-
-
-    if (RXCount == 3) {
-        // After the 3rd data is read
-        current_state = DONE;
-    }
-    //__bic_SR_register(LPM0_bits);
 }
 
 
