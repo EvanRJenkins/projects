@@ -76,7 +76,7 @@ void main(void)
                 break;
 
             case RX:
-                if (RXCount == 1) 
+                if (RXCount == 3) 
                 {
                 UCB0CTL1 |= UCTXSTP;
                 current_state = DONE;
@@ -105,12 +105,18 @@ __interrupt void USCIAB0TX_ISR(void)
         case SEND_ADDR:
             current_state = RESTART;
             break;
+        
+        case RX:
+            // Read the byte from the buffer
+            RXData[RXCount] = UCB0RXBUF;
+            ++RXCount;
+            break;
     }
 
     IFG2 &= ~UCB0TXIFG;              // Clear TX flag
 }
 
-#pragma vector = USCIAB0RX_VECTOR
+/*#pragma vector = USCIAB0RX_VECTOR
 __interrupt void USCIAB0RX_ISR(void)
 {
     // Read the byte from the buffer
@@ -118,7 +124,7 @@ __interrupt void USCIAB0RX_ISR(void)
     ++RXCount;
     IFG2 &= ~UCB0RXIFG;
 
-}
+}*/
 
 
 // Button ISR for debugging
