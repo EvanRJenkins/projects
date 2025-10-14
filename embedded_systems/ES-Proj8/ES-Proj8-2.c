@@ -3,7 +3,6 @@
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
 #define READ_ADDR 0xE0
 
-
 typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
@@ -30,37 +29,30 @@ void main(void)
     UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
     IE2 |= UCB0TXIE;                         // Enable TX interrupt
 
-    
-
     UCB0CTL1 |= UCTR;   // TX mode
     while (1)
-  {
-    
-    switch (current_state)
     {
+      switch (current_state)
+      {
 
-      case DUMMY_WRITE:
-        UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
-        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
-        break;
+        case DUMMY_WRITE:
+          UCB0CTL1 |= UCTR + UCTXSTT;  // I2C TX, start condition
+          __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
+          break;
 
-      case SEND_ADDR:
+        case SEND_ADDR:
 
-        __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
-        break;
+          __bis_SR_register(GIE);  // Enter LPM0 w/ interrupts
+          break;
 
-      case READ_DATA:
-        UCB0CTL1 |= UCTXSTP;                    // I2C stop condition
-        break;
+        case READ_DATA:
+          UCB0CTL1 |= UCTXSTP;  // I2C stop condition
+          break;
 
-      default:
-
-        break;
+        default:
+          break;
     }
-
   }
-
-
 }
 
 // USCI_B0 RX ISR
