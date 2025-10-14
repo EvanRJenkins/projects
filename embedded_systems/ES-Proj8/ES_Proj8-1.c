@@ -2,7 +2,6 @@
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C address
 
-
 void main(void)
 {
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
@@ -25,24 +24,18 @@ void main(void)
     UCB0CTL1 &= ~UCSWRST;                    // Clear SW reset
     IE2 |= UCB0TXIE;                         // Enable TX interrupt
 
-    
-
     UCB0CTL1 |= UCTR;   // TX mode
     while (1)
   {
-    
     while ((UCB0CTL1 & UCTXSTP));             // Ensure stop condition got sent
-    
     UCB0CTL1 |= UCTR + UCTXSTT;             // I2C TX, start condition
     __bis_SR_register(CPUOFF + GIE);        // Enter LPM0 w/ interrupts
   }
-
-
 }
 
 // USCI_B0 RX ISR
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
-
+;
 }
