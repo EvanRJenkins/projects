@@ -1,12 +1,11 @@
 #include <msp430.h>
 
 #define SLAVE_ADDR 0x50  // 7-bit I2C EEPROM address
-#define READ_ADDR  0xE0
+#define READ_ADDR  0xE0  // 8-bit EEPROM word address
 typedef enum {DUMMY_WRITE, SEND_ADDR, READ_DATA, DONE} state_t;
 
 volatile state_t current_state = DUMMY_WRITE;
 volatile unsigned char RXData;
-
 
 void main(void)
 {
@@ -34,30 +33,29 @@ void main(void)
     {
         switch (current_state)
         {
-            case DUMMY_WRITE:
-                UCB0CTL1 |= UCTR + UCTXSTT;    // TX mode + START condition
-                __bis_SR_register(CPUOFF + GIE);
-                break;
+          case DUMMY_WRITE:
+            UCB0CTL1 |= UCTR + UCTXSTT;    // TX mode + START condition
+            __bis_SR_register(GIE);
+            break;
 
-            case SEND_ADDR:
-                __bis_SR_register(CPUOFF + GIE);
-                break;
+          case SEND_ADDR:
+            __bis_SR_register(GIE);
+            break;
 
-            case READ_DATA:
-                IE2 &= ~UCB0TXIE;              // Disable TX interrupt
-                IE2 |= UCB0RXIE;               // Enable RX interrupt
-                UCB0CTL1 &= ~UCTR;             // Switch to RX mode
-                UCB0CTL1 |= UCTXSTT;           // Repeated START
+          case READ_DATA:
+            IE2 &= ~UCB0TXIE;              // Disable TX interrupt
+            IE2 |= UCB0RXIE;               // Enable RX interrupt
+            UCB0CTL1 &= ~UCTR;             // Switch to RX mode
+            UCB0CTL1 |= UCTXSTT;           // Repeated START
 
-                // Wait for START to complete before issuing STOP
-                while (UCB0CTL1 & UCTXSTT);    // Wait until STT cleared
-                UCB0CTL1 |= UCTXSTP;           // Send STOP
-                __bis_SR_register(CPUOFF + GIE);
-                break;
+            // Wait for START to complete before issuing STOP
+            while (UCB0CTL1 & UCTXSTT);    // Wait until STT cleared
+            UCB0CTL1 |= UCTXSTP;           // Send STOP
+            __bis_SR_register(GIE);
+            break;
 
-            case DONE:
-                __no_operation();              // RXData has the data now
-                break;
+          case DONE:
+            break;
         }
     }
 }
@@ -66,32 +64,21 @@ void main(void)
 #pragma vector = USCIAB0TX_VECTOR
 __interrupt void USCIAB0TX_ISR(void)
 {
-    switch (current_state)
-    {
-        case DUMMY_WRITE:
-            UCB0TXBUF = READ_ADDR;   // Send EEPROM word address
-            current_state = SEND_ADDR;
-            break;
+  switch (current_state)
+  {
+    case DUMMY_WRITE:
+      UCB0TXBUF = READ_ADDR;   // Send EEPROM word address
+      current_state = SEND_ADDR;
+      break;
 
-        case SEND_ADDR:
-            current_state = READ_DATA;
-            break;
+    case SEND_ADDR:
+      current_state = READ_DATA;
+      break;
 
-        default:
-            break;
+      case READ_DATA:
+        RXData = UCB0RXBUF;
+        current_state = DONE;
+        break;
     }
-
     IFG2 &= ~UCB0TXIFG;                 // Clear TX flag
-    __bic_SR_register_on_exit(CPUOFF); // Exit LPM0
-}
-
-// USCI_B0 RX ISR
-#pragma vector = USCIAB0RX_VECTOR
-__interrupt void USCIAB0RX_ISR(void)
-{
-    RXData = UCB0RXBUF;                 // Read received byte
-    current_state = DONE;
-
-    IFG2 &= ~UCB0RXIFG;                 // Clear RX flag
-    __bic_SR_register_on_exit(CPUOFF); // Exit LPM0
 }
