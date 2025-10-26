@@ -175,6 +175,10 @@ void clk_config(void)
 
 void pin_config(void)
 {
+    // Set event loop pin
+    P1DIR |= BIT4;   // Set P1.4 as output
+    P1OUT &= ~BIT4;  // Start low
+
     // Configure P1.3 as ADC input
     P1DIR &= ~BIT3; // Set P1.3 as input
     P1SEL |= BIT3;  // Enable A3 analog input
@@ -222,6 +226,9 @@ void uart_tx_str(char *str)
         while (!(IFG2 & UCA0TXIFG)); // Wait for TX buffer empty
         UCA0TXBUF = *str++;          // Send char and ++pointer
     }
+
+    while (!(IFG2 & UCA0TXIFG)); // Wait until last byte done
+    P1OUT &= ~BIT4;               // Reset P1.4 low for timing test
 }
 
 void adc_avg_to_str(unsigned int adc_val, char *buffer)
@@ -253,6 +260,7 @@ void adc_avg_to_str(unsigned int adc_val, char *buffer)
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void Timer_A_ISR(void)
 {
+    P1OUT |= BIT4;            // Set P1.4 for timing test
     // Start ADC conversion
     ADC10CTL0 |= ENC + ADC10SC;
 }
