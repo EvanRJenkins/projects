@@ -97,13 +97,12 @@ void InitializeLcm(void)
 }
 
 
-// Global variables for ADC interrupt
+// Globals for ADC interrupt
 volatile unsigned int adc_samples[4];
 volatile unsigned char sample_counter = 0;
 volatile unsigned int final_adc_value = 0;
 volatile int new_voltage = FALSE;
 
-// Function Prototypes
 void watchdog_config();
 void clk_config();
 void pin_config();
@@ -115,7 +114,7 @@ void adc_avg_to_str(unsigned int adc_val, char *buffer);
 
 int main()
 {
-    char volt_str[10]; // Buffer for "V.XX V" + \0
+    char volt_str[10]; // Buffer for voltage string
 
     // Configure hardware
     watchdog_config();
@@ -126,10 +125,9 @@ int main()
     timer_config();      // 4Hz sampling timer
     InitializeLcm();     // LCD on Port 2
 
-    // Enable global interrupts
     __enable_interrupt(); // GIE
 
-    // Startup display text
+    // Default text
     ClearLcmScreen();
     PrintStr("Voltmeter");
     LcmSetCursorPosition(1, 0);
@@ -145,7 +143,7 @@ int main()
         {
             new_voltage = FALSE; // Clear flag
 
-            // Convert avg ADC value to string
+            // Convert avg ADC value to str
             adc_avg_to_str(final_adc_value, volt_str);
 
             // Update LCD
