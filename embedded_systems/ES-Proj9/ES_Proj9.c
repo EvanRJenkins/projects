@@ -104,16 +104,16 @@ volatile unsigned int final_adc_value = 0;
 volatile int new_voltage = FALSE;
 
 // Function Prototypes
-void watchdog_config(void);
-void clk_config(void);
-void pin_config(void);
-void timer_config(void);
-void adc_config(void);
-void uart_config(void);
+void watchdog_config();
+void clk_config();
+void pin_config();
+void timer_config();
+void adc_config();
+void uart_config();
 void uart_tx_str(char *str);
 void adc_avg_to_str(unsigned int adc_val, char *buffer);
 
-int main(void)
+int main()
 {
     char volt_str[10]; // Buffer for "V.XX V" + \0
 
@@ -160,12 +160,12 @@ int main(void)
 }
 
 
-void watchdog_config(void)
+void watchdog_config()
 {
     WDTCTL = WDTPW + WDTHOLD; // Stop WDT
 }
 
-void clk_config(void)
+void clk_config()
 {
     // Set DCO to 1MHz
     DCOCTL = 0;
@@ -173,7 +173,7 @@ void clk_config(void)
     DCOCTL = CALDCO_1MHZ;
 }
 
-void pin_config(void)
+void pin_config()
 {
     // Set event loop pin
     P1DIR |= BIT4;   // Set P1.4 as output
@@ -189,7 +189,7 @@ void pin_config(void)
     P1SEL2 |= BIT1 + BIT2;
 }
 
-void uart_config(void)
+void uart_config()
 {
     // Config for 9600 Baud
     UCA0CTL1 |= UCSSEL_2; // Use SMCLK (1MHz)
@@ -199,7 +199,7 @@ void uart_config(void)
     UCA0CTL1 &= ~UCSWRST; // Initialize USCI
 }
 
-void adc_config(void)
+void adc_config()
 {
     // VCC/VSS ref, 16x sample/hold, enable interrupts
     ADC10CTL0 = SREF_0 + ADC10SHT_2 + ADC10ON + ADC10IE;
@@ -208,7 +208,7 @@ void adc_config(void)
     ADC10AE0 |= BIT3; // Enable analog input P1.3
 }
 
-void timer_config(void)
+void timer_config()
 {
     // Configure Timer_A for 4Hz interrupt
     // SMCLK (1MHz) / 8 (divider) = 125,000 Hz
@@ -258,7 +258,7 @@ void adc_avg_to_str(unsigned int adc_val, char *buffer)
 // Timer A ISR
 // Calls 4 times per second starting ADC conversion
 #pragma vector = TIMER0_A0_VECTOR
-__interrupt void Timer_A_ISR(void)
+__interrupt void Timer_A_ISR()
 {
     P1OUT |= BIT4;            // Set P1.4 for timing test
     // Start ADC conversion
@@ -268,7 +268,7 @@ __interrupt void Timer_A_ISR(void)
 // ADC ISR
 // Calls after conversion is complete
 #pragma vector = ADC10_VECTOR
-__interrupt void ADC10_ISR(void)
+__interrupt void ADC10_ISR()
 {
     adc_samples[sample_counter] = ADC10MEM; // Store new sample
     sample_counter++;
