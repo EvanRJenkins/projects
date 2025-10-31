@@ -1,4 +1,4 @@
-#include "msp430.h"
+#include <msp430.h>
 
 #define FALSE 0
 #define TRUE 1
