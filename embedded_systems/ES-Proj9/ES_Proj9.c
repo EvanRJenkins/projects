@@ -3,97 +3,97 @@
 #define FALSE 0
 #define TRUE 1
 
-#define LCM_DIR P2DIR
-#define LCM_OUT P2OUT
+#define LCD_DIR P2DIR
+#define LCD_OUT P2OUT
 
-#define LCM_PIN_RS BIT0 // P2.0
-#define LCM_PIN_EN BIT1 // P2.1
-#define LCM_PIN_D4 BIT2 // P2.2
-#define LCM_PIN_D5 BIT3 // P2.3
-#define LCM_PIN_D6 BIT4 // P2.4
-#define LCM_PIN_D7 BIT5 // P2.5
+#define LCD_PIN_RS BIT0 // P2.0
+#define LCD_PIN_EN BIT1 // P2.1
+#define LCD_PIN_D4 BIT2 // P2.2
+#define LCD_PIN_D5 BIT3 // P2.3
+#define LCD_PIN_D6 BIT4 // P2.4
+#define LCD_PIN_D7 BIT5 // P2.5
 
-#define LCD_DATA_MASK (LCM_PIN_D4 | LCM_PIN_D5 | LCM_PIN_D6 | LCM_PIN_D7)
-#define LCD_PIN_MASK (LCM_PIN_RS | LCM_PIN_EN | LCD_DATA_MASK)
+#define LCD_DATA_MASK (LCD_PIN_D4 | LCD_PIN_D5 | LCD_PIN_D6 | LCD_PIN_D7)
+#define LCD_PIN_MASK (LCD_PIN_RS | LCD_PIN_EN | LCD_DATA_MASK)
 
 // Delay const for 1 MHz clock
 #define PULSE_DELAY 200     // delay 0.2 ms
 #define START_DELAY 100000 // delay 100 ms
 
 
-void PulseLcm()
+void lcd_send_pulse()
 {
-    LCM_OUT &= ~LCM_PIN_EN; // pull EN bit low
+    LCD_OUT &= ~LCD_PIN_EN; // pull EN bit low
     __delay_cycles(PULSE_DELAY);
-    LCM_OUT |= LCM_PIN_EN; // pull EN bit high
+    LCD_OUT |= LCD_PIN_EN; // pull EN bit high
     __delay_cycles(PULSE_DELAY);
-    LCM_OUT &= ~LCM_PIN_EN; // pull EN bit low again
+    LCD_OUT &= ~LCD_PIN_EN; // pull EN bit low again
     __delay_cycles(PULSE_DELAY);
 }
 
-void SendByte(char ByteToSend, int IsData)
+void lcd_write_byte(char byte_to_send, int bool_data)
 {
     // Clear RS/EN and data pins
-    LCM_OUT &= ~(LCD_PIN_MASK);
+    LCD_OUT &= ~(LCD_PIN_MASK);
 
-    LCM_OUT |= ((ByteToSend & 0xF0) >> 2);
+    LCD_OUT |= ((byte_to_send & 0xF0) >> 2);
 
-    if (IsData == TRUE)
-        LCM_OUT |= LCM_PIN_RS;
+    if (bool_data == TRUE)
+        LCD_OUT |= LCD_PIN_RS;
     
-    PulseLcm(); // Latch the data
+    lcd_send_pulse(); // Latch the data
 
     // Clear RS/EN and data pins
-    LCM_OUT &= ~(LCD_PIN_MASK);
+    LCD_OUT &= ~(LCD_PIN_MASK);
 
     // Set data bits
-    LCM_OUT |= ((ByteToSend & 0x0F) << 2);
+    LCD_OUT |= ((byte_to_send & 0x0F) << 2);
 
-    if (IsData == TRUE)
-        LCM_OUT |= LCM_PIN_RS;
+    if (bool_data == TRUE)
+        LCD_OUT |= LCD_PIN_RS;
 
-    PulseLcm(); // Latch data
+    lcd_send_pulse(); // Latch data
 }
 
-void LcmSetCursorPosition(char Row, char Col)
+void lcd_cursor_config(char cursor_row, char cursor_column)
 {
     char address;
-    if (Row == 0)
+    if (cursor_row == 0)
         address = 0;
     else
         address = 0x40;
-    address |= Col;
-    SendByte(0x80 | address, FALSE);
+    address |= cursor_column;
+    lcd_write_byte(0x80 | address, FALSE);
 }
 
-void ClearLcmScreen()
+void lcd_clear()
 {
-    SendByte(0x01, FALSE);
-    SendByte(0x02, FALSE);
+    lcd_write_byte(0x01, FALSE);
+    lcd_write_byte(0x02, FALSE);
 }
 
-void PrintStr(char *Text)
+void lcd_write_string(char *p_text)
 {
-    char *c = Text;
+    char *c = p_text;
     while ((c != 0) && (*c != 0))
     {
-        SendByte(*c, TRUE);
+        lcd_write_byte(*c, TRUE);
         c++;
     }
 }
 
-void InitializeLcm(void)
+void InitializeLCD(void)
 {
-    LCM_DIR |= LCD_PIN_MASK;
-    LCM_OUT &= ~(LCD_PIN_MASK);
+    LCD_DIR |= LCD_PIN_MASK;
+    LCD_OUT &= ~(LCD_PIN_MASK);
     __delay_cycles(START_DELAY);
-    LCM_OUT &= ~LCM_PIN_RS;
-    LCM_OUT &= ~LCM_PIN_EN;
-    LCM_OUT = LCM_PIN_D5;  // 4 bit mode
-    PulseLcm();
-    SendByte(0x28, FALSE); // 4-bit, 2-line
-    SendByte(0x0E, FALSE); // Display on, cursor on
-    SendByte(0x06, FALSE); // Auto-increment cursor
+    LCD_OUT &= ~LCD_PIN_RS;
+    LCD_OUT &= ~LCD_PIN_EN;
+    LCD_OUT = LCD_PIN_D5;  // 4 bit mode
+    lcd_send_pulse();
+    lcd_write_byte(0x28, FALSE); // 4-bit, 2-line
+    lcd_write_byte(0x0E, FALSE); // Display on, cursor on
+    lcd_write_byte(0x06, FALSE); // Auto-increment cursor
 }
 
 
@@ -123,15 +123,15 @@ int main()
     uart_config();   // RS232
     adc_config();        // ADC on P1.3
     timer_config();      // 4Hz sampling timer
-    InitializeLcm();     // LCD on Port 2
+    InitializeLCD();     // LCD on Port 2
 
     __enable_interrupt(); // GIE
 
     // Default text
-    ClearLcmScreen();
-    PrintStr("Voltmeter");
-    LcmSetCursorPosition(1, 0);
-    PrintStr("0.00 V");
+    lcd_clear();
+    lcd_write_string("Voltmeter");
+    lcd_cursor_config(1, 0);
+    lcd_write_string("0.00 V");
 
     while (1)
     {
@@ -147,8 +147,8 @@ int main()
             adc_avg_to_str(final_adc_value, volt_str);
 
             // Update LCD
-            LcmSetCursorPosition(1, 0);
-            PrintStr(volt_str);
+            lcd_cursor_config(1, 0);
+            lcd_write_string(volt_str);
 
             // Update UART
             uart_tx_str(volt_str);
@@ -222,7 +222,7 @@ void uart_tx_str(char *str)
     while (*str)
     {
         while (!(IFG2 & UCA0TXIFG)); // Wait for TX buffer empty
-        UCA0TXBUF = *str++;          // Send char and ++pointer
+        UCA0TXBUF = *str++;          // Send char and ++ptr
     }
 
     while (!(IFG2 & UCA0TXIFG)); // Wait until last byte done
