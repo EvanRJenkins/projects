@@ -41,7 +41,7 @@ void lcd_write_byte(char byte_to_send, int bool_data)
     if (bool_data == TRUE)
         LCD_OUT |= LCD_PIN_RS;
     
-    lcd_send_pulse(); // Latch the data
+    lcd_send_pulse(); // Latch data
 
     // Clear RS/EN and data pins
     LCD_OUT &= ~(LCD_PIN_MASK);
