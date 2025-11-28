@@ -7,15 +7,15 @@ to interface with the 74AHC164 SIPO shift register IC.
 #define 74AHC164_H
 
 /*
-Global 74AHC164 input pin definitions.
+Global 74AHC164 input pin registers.
 */
 
-extern unsigned char * DSA_REG, DSB_REG;  // Serial data
-extern unsigned char * MR_N_REG;  // Active-low RST
-extern unsigned char * CP_REG;  // Clock pulse
+extern unsigned char * pDSA_REG, pDSB_REG;  // Serial data
+extern unsigned char * pMR_N_REG;  // Active-low RST
+extern unsigned char * pCP_REG;  // Clock pulse
 
 /*
-I/O Pin Masks
+Global input pin masks
 */
 
 extern unsigned char  DSA_PIN, DSB_PIN;  // Serial data
@@ -23,51 +23,64 @@ extern unsigned char  MR_N_PIN;  // Active-low RST
 extern unsigned char  CP_PIN;  // Clock pulse
 
 // Assign the registers of I/O pins being used
-void SIPO_reg_init(unsigned char * DSA_reg, unsigned char * DSB_reg,
-  unsigned char * MR_N_reg, unsigned char * CP_reg)
+void SIPO_reg_init(unsigned char * DSA_addr, unsigned char * DSB_addr,
+  unsigned char * MR_N_addr, unsigned char * CP_addr)
 {
-  DSA_REG = DSA_REG_reg;
-  DSB_REG = DSB_REG_reg;
-  MR_N_REG = MR_N_reg;
-  CP_REG = CP_reg;
+  // Copy register addresses to extern ptrs
+  pDSA_REG = DSA_addr;
+  pDSB_REG = DSB_addr;
+  pMR_N_REG = MR_N_addr;
+  pCP_REG = CP_addr;
 }
 
 // Pass in masks for pins being used
 void SIPO_pin_init(unsigned char DSA_pin, unsigned char DSB_pin,
   unsigned char MR_N_pin, unsigned char CP_pin)
 {
+  // Copy register addresses to extern ptrs
   DSA_PIN = DSA_pin;
   DSB_PIN = DSA_pin;
   MR_N_PIN = MR_N_pin;
   CP_PIN = CP_pin;
+
+  // Set active low reset high initially
+  *pMR_N_REG |= MR_N_PIN;
 }
+
+// reset 74AHC164 register (Async master RST)
+void SIPO_reset()
+{
+  *pMR_N_REG &= ~MR_N_PIN;
+  *pMR_N_REG |= MR_N_PIN;
+}
+
 
 // Shift one byte over 8 clock cycles
 void SIPO_shift(char shift_byte)
 {
   unsigned char shift_counter = 0;
+  SIPO_reset();
   for (shift_counter = 0; shift_counter < 8; shift_counter++)
   {
     switch ((shift_byte >> shift_counter) & 0x01)
     {
       case 0:
         // Set shift bit low
-        *DSA_REG &= ~DSA_PIN;
+        *pDSA_REG &= ~DSA_PIN;
         // Pulse clock
-        *CP_REG |= CP_PIN;
-        *CP_REG &= ~CP_PIN;
+        *pCP_REG |= CP_PIN;
+        *pCP_REG &= ~CP_PIN;
         break;
       case 1:
         // Set shift bit high
-        *DSA_REG |= DSA_PIN;
+        *pDSA_REG |= DSA_PIN;
         // Pulse clock
-        *CP_REG |= CP_PIN;
-        *CP_REG &= ~CP_PIN;       
+        *pCP_REG |= CP_PIN;
+        *pCP_REG &= ~CP_PIN;       
         break;
     }
   }
 }
-
 
 
 
