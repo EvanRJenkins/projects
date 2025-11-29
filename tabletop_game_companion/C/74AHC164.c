@@ -54,7 +54,7 @@ void SIPO_shift(char shift_byte)
   unsigned char shift_counter = 0;
   for (shift_counter = 0; shift_counter < 8; shift_counter++)
   {
-    if ((shift_byte << shift_counter) & 0x01)
+    if ((shift_byte << shift_counter) & 0x80)  // MSB first
     {
       // Set shift bit high
       *pDSA_REG |= DSA_PIN;
