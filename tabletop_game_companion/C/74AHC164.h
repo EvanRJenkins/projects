@@ -7,6 +7,13 @@ to interface with the 74AHC164 SIPO shift register IC.
 #define 74AHC164_H
 
 /*
+NOTE: These functions are designed for the following two
+configurations:
+1. DSA and DSB tied together
+2. DSB tied to VCC
+*/
+
+/*
 Global 74AHC164 input pin registers.
 */
 
