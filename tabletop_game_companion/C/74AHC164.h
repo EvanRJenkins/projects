@@ -41,7 +41,7 @@ void SIPO_pin_init(unsigned char DSA_pin,
 void SIPO_reset();
 
 // Shift one byte over 8 clock cycles
-void SIPO_shift(char shift_byte);
+void SIPO_shift(unsigned char shift_byte);
 
 
 #endif
