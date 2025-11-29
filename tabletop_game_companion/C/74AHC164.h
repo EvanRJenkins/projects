@@ -17,7 +17,7 @@ configurations:
 Global 74AHC164 input pin registers.
 */
 
-extern unsigned char *pDSA_REG, *pDSB_REG;  // Serial data
+extern unsigned char *pDSA_REG;  // Serial data
 extern unsigned char *pMR_N_REG;  // Active-low RST
 extern unsigned char *pCP_REG;  // Clock pulse
 
@@ -25,16 +25,16 @@ extern unsigned char *pCP_REG;  // Clock pulse
 Global input pin masks
 */
 
-extern unsigned char  DSA_PIN, DSB_PIN;  // Serial data
+extern unsigned char  DSA_PIN;  // Serial data
 extern unsigned char  MR_N_PIN;  // Active-low RST
 extern unsigned char  CP_PIN;  // Clock pulse
 
 // Assign the registers of I/O pins being used
-void SIPO_reg_init(unsigned char *DSA_addr, unsigned char *DSB_addr,
+void SIPO_reg_init(unsigned char *DSA_addr,
   unsigned char *MR_N_addr, unsigned char *CP_addr);
 
 // Pass in masks for pins being used
-void SIPO_pin_init(unsigned char DSA_pin, unsigned char DSB_pin,
+void SIPO_pin_init(unsigned char DSA_pin,
   unsigned char MR_N_pin, unsigned char CP_pin);
 
 // reset 74AHC164 register (Async master RST)
