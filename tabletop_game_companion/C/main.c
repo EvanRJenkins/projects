@@ -5,16 +5,15 @@
 Pin and register definitions
 for use with 74AHC164.h
 */
-#define DSA_PIN = 00000001;
-#define CP_PIN = 00000010;
-#define MR_N_PIN 00000100;
-
-unsigned char *pDSA_REG = &P1OUT;
-unsigned char *pMR_N_REG = &P1OUT;
-unsigned char *pCP_REG = &P1OUT;
 
 
+unsigned char *pDSA_REG;
+unsigned char *pMR_N_REG;
+unsigned char *pCP_REG;
 
+unsigned char DSA_PIN;
+unsigned char MR_N_PIN;
+unsigned char CP_PIN;
 
 
 
@@ -26,8 +25,8 @@ int main(void) {
   P1OUT |= BIT3;  // Set LD_N high
   P1OUT &= ~(BIT0 | BIT1 | BIT2);  // Set others low
 
-
-
+  SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
+  SIPO_pin_init(BIT0, BIT2, BIT1);
 
 
 
