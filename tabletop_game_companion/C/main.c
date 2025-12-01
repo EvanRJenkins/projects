@@ -44,4 +44,20 @@ int main(void) {
   */
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
+  /*
+  FSM loop
+  */
+  switch (system_state) {
+    case IDLE:
+      break;
+    case COMMAND:
+      break;
+    case MENU:
+      break;
+    case COUNT:
+      break;
+    case RANDOM:
+      break;
+  }
+  return 0;  // End of program
 }
