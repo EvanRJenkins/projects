@@ -24,7 +24,7 @@ int main(void) {
   /*
   Init pins
   */
-  P1DIR |= 0x0F;  // Set bits 0-3 as outputs
+  P1DIR |= (BIT0 | BIT1 | BIT2 | BIT3);  // Set bits 0-3 as outputs
   P1OUT |= BIT3;  // Set LD_N high
   P1OUT &= ~(BIT0 | BIT1 | BIT2);  // Set others low
 
