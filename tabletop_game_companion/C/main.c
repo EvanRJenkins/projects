@@ -48,15 +48,15 @@ int main(void) {
   FSM loop
   */
   switch (system_state) {
-    case IDLE:
+    case IDLE:  // LPM and wait
       break;
-    case COMMAND:
+    case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
       break;
-    case MENU:
+    case MENU:  // Configure RANDOM number range, mode (COUNT or RANDOM, etc.)
       break;
-    case COUNT:
+    case COUNT:  // Increment counter and display for some time
       break;
-    case RANDOM:
+    case RANDOM:  // Make "random" number in set range and display for some time
       break;
   }
   return 0;  // End of program
