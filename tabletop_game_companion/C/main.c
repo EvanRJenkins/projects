@@ -6,7 +6,6 @@ Pin and register definitions
 for use with 74AHC164.h
 */
 
-
 unsigned char *pDSA_REG;
 unsigned char *pMR_N_REG;
 unsigned char *pCP_REG;
@@ -15,7 +14,9 @@ unsigned char DSA_PIN;
 unsigned char MR_N_PIN;
 unsigned char CP_PIN;
 
-
+*/
+Main function
+*/
 
 int main(void) {
   /*
