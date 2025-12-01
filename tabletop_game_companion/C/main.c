@@ -21,12 +21,13 @@ volatile state_t system_state = IDLE;
 Main function
 */
 int main(void) {
+  WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
   /*
   Init pins
   */
   P1DIR |= (BIT0 | BIT1 | BIT2 | BIT3);  // Set bits 0-3 as outputs
-  P1OUT |= BIT3;  // Set LD_N high
-  P1OUT &= ~(BIT0 | BIT1 | BIT2);  // Set others low
+  P1OUT |= (BIT2 | BIT3);  // Set MR_N and LD_N high
+  P1OUT &= ~(BIT0 | BIT1);  // Set others low
 
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
