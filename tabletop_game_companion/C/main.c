@@ -24,7 +24,12 @@ int main(void) {
   */
   BCSCTL2 |= SELM_3;  // Select VLO as MCLK source
   BCSCTL2 |= SELS;  // Selec VLO as SMCLK source
-  
+  /*
+  Init Timer_A
+  */
+  TACTL |= TASSEL_3;  // Set Timer_A clock to SMCLK (VLO)
+  TACTL &= ~(MC_0);  // Set Timer_A to stop mode
+  TACTL |= TACLR;  // Clear Timer_A
   /*
   Init pins
   */
