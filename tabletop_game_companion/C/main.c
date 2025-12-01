@@ -1,6 +1,21 @@
 #include <msp430g2452.h>
 #include "74AHC164.h"
 
+/*
+FSM type definition
+*/
+typedef enum {
+  IDLE;
+  COMMAND;
+  MENU;
+  COUNT;
+  RANDOM;
+} state_t;
+
+/*
+State variable instantiation
+*/
+volatile state_t system_state = IDLE;
 
 /*
 Main function
