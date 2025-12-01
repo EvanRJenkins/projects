@@ -14,7 +14,7 @@ unsigned char DSA_PIN;
 unsigned char MR_N_PIN;
 unsigned char CP_PIN;
 
-*/
+/*
 Main function
 */
 
