@@ -1,17 +1,10 @@
 #include <msp430g2452.h>
 #include "74AHC164.h"
 
-/*
-Pin and register definitions
-for use with 74AHC164.h
-*/
-
-
 
 /*
 Main function
 */
-
 int main(void) {
   /*
   Init pins
