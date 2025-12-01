@@ -24,6 +24,7 @@ int main(void) {
   */
   BCSCTL2 |= SELM_3;  // Select VLO as MCLK source
   BCSCTL2 |= SELS;  // Selec VLO as SMCLK source
+  BCSCTL3 = LFXT1S_2;  // Selec VLO as ACLK source
   /*
   Init Timer_A
   */
