@@ -20,6 +20,12 @@ Main function
 int main(void) {
   WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
   /*
+  Init clock
+  */
+  BCSCTL2 |= SELM_3;  // Select VLO as MCLK source
+  BCSCTL2 |= SELS;  // Selec VLO as SMCLK source
+  
+  /*
   Init pins
   */
   P1DIR |= (BIT0 | BIT1 | BIT2 | BIT3);  // Set bits 0-3 as outputs
