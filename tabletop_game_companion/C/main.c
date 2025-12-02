@@ -1,5 +1,5 @@
 #include <msp430g2452.h>
-#include "74AHC164.h"
+#include "_74AHC164.h"
 /*
 FSM type definition
 */
@@ -45,6 +45,7 @@ int main(void) {
   */
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
+  SIPO_shift(0x41);
   /*
   FSM loop
   */
