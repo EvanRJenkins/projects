@@ -4,11 +4,11 @@
 FSM type definition
 */
 typedef enum {
-  IDLE;
-  COMMAND;
-  MENU;
-  COUNT;
-  RANDOM;
+  IDLE,
+  COMMAND,
+  MENU,
+  COUNT,
+  RANDOM
 } state_t;
 /*
 State variable instantiation
