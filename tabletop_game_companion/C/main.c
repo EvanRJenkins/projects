@@ -74,7 +74,14 @@ __interrupt void Port_2_ISR(void) {
 }
 
 #pragma vector = TIMER0_A0_VECTOR
-__interrupt void Timer_A0_ISR(void) {
+__interrupt void Timer_A0_ISR(void) {  // For button debounce
   
 
 }
+
+#pragma vector = TIMER0_A1_VECTOR
+__interrupt void Timer_A1_ISR(void) {  // For features
+  
+
+}
+
