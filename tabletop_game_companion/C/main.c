@@ -42,7 +42,6 @@ int main(void) {
       case IDLE:  // LPM and wait
         break;
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
-        i += 0x02;
         SIPO_shift(0x02);  // Testing interrupt
         break;
       case MENU:  // Configure RANDOM number range, mode (COUNT or RANDOM, etc.)
