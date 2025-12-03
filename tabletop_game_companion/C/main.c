@@ -28,6 +28,12 @@ int main(void) {
   SIPO_pin_init(BIT0, BIT2, BIT1);
   SIPO_shift(0x14);
   /*
+  Init Timer_A
+  */
+  TACTL = TASSEL_2 + MC_2;  // SMCLK, continuous mode
+  TACCR1 = TAR + RANDOM_INTERVAL;  // RNG reference point
+  TACCTL1 = CCIE;  // Enable Timer_A interrupt
+  /*
   Enable P2.1 interrupt
   */
   __bis_SR_register(GIE);
@@ -61,32 +67,25 @@ Interrupts
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2_ISR(void) {
   if (P2IFG & BIT1) {  // If falling edge interrupt
-    if (P2IES & BIT1) {
-      P2IE &= ~BIT1;  // Disable until timer done
-      TACCR0 = DEBOUCE_DELAY;  // Assign this a value!
-      TACCTL0 = CCIE;  // Enable Timer_A interrupt
-      TACTL = TASSEL_2 + MC_1 + ID_0  // Start debouce timer
-      P2IES &= ~BIT1;  // Switch flag trigger to rising edge
-    }
-    else {  // If rising edge interrupt
-      system_state = COMMAND;  // Go to COMMAND state
-      P2IES |= BIT1;  // Switch trigger back
-    }
-    P2IFG &= ~BIT1;  // Lower flag
+    // Save random number here!
+    P2IE &= ~PIN1;  // Disable button interrupt
+    P2IES ^= PIN;  // Switch relevant edge
+    TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
+    TACCTL0 = CCIE;  // Enable Timer_A interrupt
+    P2IFG &= ~PIN1;  // Clear any accumulated button flags
   }
 }
 
 #pragma vector = TIMER0_A0_VECTOR
-__interrupt void Timer_A0_ISR(void) {  // For button debounce
-  TACTL = MC_0;  // Stop Timer_A
-  TACTL |= TACLR;  // Clear Timer_A 
-  P2IFG &= ~PIN1;  // Prevent button ISR
-  P2IE |= BIT1;  // Enable burron interrupt for rising edge
+__interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
+  TACCTL &= ~CCIE;  // Disable Timer_A interrupt
+  P2IFG &= ~PIN1;  // Clear button interrupt flag
+  P2IE |= PIN1;  // Enable button interrupt
 }
 
 #pragma vector = TIMER0_A1_VECTOR
 __interrupt void Timer_A1_ISR(void) {  // For features
-  
-
+  if (TAIV == 2) {  // Define 2!
+    // Progress random number algorithm
 }
 
