@@ -62,21 +62,26 @@ Interrupts
 __interrupt void Port_2_ISR(void) {
   if (P2IFG & BIT1) {  // If falling edge interrupt
     if (P2IES & BIT1) {
-        // Switch this to start debounce timer
+      P2IE &= ~BIT1;  // Disable until timer done
+      TACCR0 = DEBOUCE_DELAY;  // Assign this a value!
+      TACCTL0 = CCIE;  // Enable Timer_A interrupt
+      TACTL = TASSEL_2 + MC_1 + ID_0  // Start debouce timer
       P2IES &= ~BIT1;  // Switch flag trigger to rising edge
     }
     else {  // If rising edge interrupt
       system_state = COMMAND;  // Go to COMMAND state
       P2IES |= BIT1;  // Switch trigger back
     }
-    P2IFG &= ~BIT1;
+    P2IFG &= ~BIT1;  // Lower flag
   }
 }
 
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void Timer_A0_ISR(void) {  // For button debounce
-  
-
+  TACTL = MC_0;  // Stop Timer_A
+  TACTL |= TACLR;  // Clear Timer_A 
+  P2IFG &= ~PIN1;  // Prevent button ISR
+  P2IE |= BIT1;  // Enable burron interrupt for rising edge
 }
 
 #pragma vector = TIMER0_A1_VECTOR
