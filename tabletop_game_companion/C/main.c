@@ -6,6 +6,7 @@ Constant definitions
 */
 #define RANDOM_INTERVAL 1000  // Placeholder value
 #define DEBOUCE_COUNT 1000  // Placeholder value
+#define TAIV_2 2  // TACCR1 CCIFG
 /*
 FSM type definition
 */
@@ -88,7 +89,7 @@ __interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
 
 #pragma vector = TIMER0_A1_VECTOR
 __interrupt void Timer_A1_ISR(void) {  // For features
-  if (TAIV == 2) {  // Define 2!
+  if (TAIV == TAIV_2) {  // Define 2!
     // Progress random number algorithm
   }
 }
