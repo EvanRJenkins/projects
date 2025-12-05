@@ -1,7 +1,11 @@
 #include <msp430g2452.h>
 #include "_74AHC164.h"
 #include "init.h"
-
+/*
+Constant definitions
+*/
+#define RANDOM_INTERVAL 1000  // Placeholder value
+#define DEBOUCE_COUNT 1000  // Placeholder value
 /*
 FSM type definition
 */
@@ -63,29 +67,28 @@ int main(void) {
 /*
 Interrupts
 */
-
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2_ISR(void) {
   if (P2IFG & BIT1) {  // If falling edge interrupt
     // Save random number here!
-    P2IE &= ~PIN1;  // Disable button interrupt
-    P2IES ^= PIN;  // Switch relevant edge
+    P2IE &= ~BIT1;  // Disable button interrupt
+    P2IES ^= BIT1;  // Switch relevant edge
     TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
     TACCTL0 = CCIE;  // Enable Timer_A interrupt
-    P2IFG &= ~PIN1;  // Clear any accumulated button flags
+    P2IFG &= ~BIT1;  // Clear any accumulated button flags
   }
 }
 
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
-  TACCTL &= ~CCIE;  // Disable Timer_A interrupt
-  P2IFG &= ~PIN1;  // Clear button interrupt flag
-  P2IE |= PIN1;  // Enable button interrupt
+  TACCTL0 &= ~CCIE;  // Disable Timer_A interrupt
+  P2IFG &= ~BIT1;  // Clear button interrupt flag
+  P2IE |= BIT1;  // Enable button interrupt
 }
 
 #pragma vector = TIMER0_A1_VECTOR
 __interrupt void Timer_A1_ISR(void) {  // For features
   if (TAIV == 2) {  // Define 2!
     // Progress random number algorithm
+  }
 }
-
