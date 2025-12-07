@@ -7,8 +7,10 @@ Constant definitions
 #define RANDOM_INTERVAL 100  // Placeholder value
 #define DEBOUCE_COUNT 1000  // Placeholder value
 #define TAIV_2 2  // TACCR1 CCIFG
-unsigned char debounce_highlow_done = 0;// TEMP FLAG
-unsigned char shift_done = 1;// TEMP FLAG
+/*
+Shift buffer to fix MSB and LSB mismatch
+*/
+#define SHIFT_BUFFER(num)  ((((num) & 0x0F) << 4) | (((num) & 0xF0) >> 4))
 /*
 FSM type definition
 */
@@ -23,6 +25,7 @@ typedef enum {
 Global variable instantiations
 */
 volatile state_t system_state = IDLE;
+volatile unsigned int temp_timer = 0x00;
 volatile unsigned char rng_num = 0x00;
 /*
 Main function
@@ -39,33 +42,24 @@ int main(void) {
   Init Timer_A
   */
   TACTL = TASSEL_2 + MC_2;  // SMCLK, continuous mode
-  //TACCR1 = TAR + RANDOM_INTERVAL;  // RNG reference point
-  //TACCTL1 = CCIE;  // Enable Timer_A interrupt
   /*
   Enable P2.1 interrupt
   */
-  __bis_SR_register(GIE);
   P2IES |= BIT1;  // Set edge select to high-low
   P2IFG &= ~BIT1;  // Clear flag
   P2IE |= BIT1;  // Enable interrupt for P2.1
+  __bis_SR_register(GIE);
   /*
   FSM loop
   */
+  int test_flag = 1;
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait
-        if (shift_done == 1)
-        {
-          SIPO_shift(0x02);  // Testing interrupt
-          shift_done = 0;
-        }
         break;
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
-        if (shift_done == 0)
-        {
-          SIPO_shift(rng_num);  // Testing interrupt
-          shift_done = 1;
-        }
+        SIPO_shift(SHIFT_BUFFER(rng_num));
+        __no_operation();
         break;
       case MENU:  // Configure RANDOM number range, mode (COUNT or RANDOM, etc.)
        break;
@@ -82,14 +76,15 @@ Interrupts
 */
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2_ISR(void) {
-    if (P2IES & ~BIT1) {  // If rising transition
-    rng_num = TA0R;  // Save random number
-    system_state = COMMAND;
+    if ((P2IES & BIT1) == 0) {  // If rising transition
+      system_state = COMMAND;
+    }
+    else {
+      TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
+      TACCTL0 = CCIE;  // Enable Timer_A interrupt
     }
     P2IE &= ~BIT1;  // Disable button interrupt
-    P2IES ^= BIT1;  // Switch relevant edge
-    TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
-    TACCTL0 = CCIE;  // Enable Timer_A interrupt
+    P2IES &= ~BIT1;  // Switch relevant edge
     P2IFG &= ~BIT1;  // Clear any accumulated button flags
 }
 
