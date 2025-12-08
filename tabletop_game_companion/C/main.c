@@ -5,20 +5,20 @@
 Definitions
 */
 #define DEBOUCE_COUNT 100  // Placeholder value
-#define COMMAND_TIMEOUT 10000  // Placeholder value
+#define LONG_PRESS_CYCLES 25000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
 Menu flag bitsmasks
 */
-#define COUNTER_RESET   (1 << 8)
-#define RANDOM_RANGE_2  (1 << 7)
-#define RANDOM_RANGE_4  (1 << 5)
-#define RANDOM_RANGE_6  (1 << 4)
-#define RANDOM_RANGE_8  (1 << 3)
-#define RANDOM_RANGE_10 (1 << 2)
-#define RANDOM_RANGE_12 (1 << 1)
-#define RANDOM_RANGE_20 (1 << 0)
+#define RANDOM_RANGE_20 (1 << 7)
+#define RANDOM_RANGE_12 (1 << 6)
+#define RANDOM_RANGE_10 (1 << 5)
+#define RANDOM_RANGE_8  (1 << 4)
+#define RANDOM_RANGE_6  (1 << 3)
+#define RANDOM_RANGE_4  (1 << 2)
+#define RANDOM_RANGE_2  (1 << 1)
+#define COUNTER_RESET   (1 << 0)
 /*
 Shift buffer to fix MSB and LSB mismatch
 */
@@ -41,6 +41,7 @@ volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
 volatile unsigned char current_count = 0;
 volatile unsigned char menu_flags = 0x00;
+volatile unsigned char menu_count = 0;
 /*
 Helper functions
 */
@@ -92,6 +93,15 @@ void debounce_high_low_active_pin() {
   P2IES ^= active_pin;  // Switch relevant edge
   P2IFG &= ~active_pin;  // Clear any accumulated button flags
 }
+void set_active_pin(unsigned char pin) {
+  active_pin = pin;
+  if (pin == BIT1) {
+    P2IE &= ~BIT2; // Disable P2.2
+  }
+  else {
+    P2IE &= ~BIT1; // Disable P2.1
+  }
+}
 /*
 Main function
 */
@@ -139,11 +149,20 @@ int main(void) {
         break;
       
       case MENU:  // Switch random range or clear counter
-
+        if (menu_count == 0) {
+        SIPO_shift(SHIFT_BUFFER(0x99));
+        }
+        else {
+          SIPO_shift(menu_count);
+        }
+        while ((P2IN & active_pin) == 0) {  // Wait through rising edge to skip debounce
+          ;
+        }
+        P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
+        __bis_SR_register(LPM3_bits);
         break;
    }
   }
-  return 0;  // End of program
 }
 /*
 Interrupts
@@ -152,11 +171,17 @@ Interrupts
 __interrupt void Port_2_ISR(void) {
     switch (system_state) {
       case IDLE:
-        if (DEBOUNCE_DONE) {  // If rising transition
-          system_state = COMMAND;
+        if (DEBOUNCE_DONE) {  // If rising transition (Button Release)
+          // Stop the long-press timer immediately
+          TA0CCTL1 &= ~CCIE;  // Stop the long-press timer
+          if (system_state == IDLE) { 
+             system_state = COMMAND;
+          }
         }
-        else {
+        else { // If falling transition (Button Press)
           schedule_debounce();
+          TACCR1 = TAR + LONG_PRESS_CYCLES;  // Start the Long Press Timer
+          TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
         }
         debounce_high_low_active_pin();
         break;
@@ -178,12 +203,10 @@ __interrupt void Port_2_ISR(void) {
         }
         else {
           if (P2IFG & BIT1) {  // If P2.1 triggered
-            active_pin = BIT1;
-            P2IE &= ~BIT2; // Disable P2.2
+            set_active_pin(BIT1);
           }
           else {  // Do the opposite
-            active_pin = BIT2;
-            P2IE &= ~BIT1;
+            set_active_pin(BIT2);
           }
           schedule_debounce();
         }
@@ -202,12 +225,34 @@ __interrupt void Port_2_ISR(void) {
         }
         else {
           if (P2IFG & BIT1) {  // If P2.1 triggered
-            active_pin = BIT1;
-            P2IE &= ~BIT2; // Disable P2.2
+            set_active_pin(BIT1);
           }
           else {  // Do the opposite
-            active_pin = BIT2;
-            P2IE &= ~BIT1;
+            set_active_pin(BIT2);
+          }
+          schedule_debounce();
+        }
+        debounce_high_low_active_pin();
+        break;
+
+        case MENU:
+        if (DEBOUNCE_DONE) { // If rising transition
+          if (active_pin == BIT2) {
+            menu_count +=1;
+            system_state = MENU;
+          }
+          else {
+            menu_flags = (1 << menu_count);
+            menu_count = 0;
+            system_state = IDLE;
+          }
+        }
+        else {
+          if (P2IFG & BIT1) {  // If P2.1 triggered
+            set_active_pin(BIT1);
+          }
+          else {  // Do the opposite
+            set_active_pin(BIT2);
           }
           schedule_debounce();
         }
@@ -225,9 +270,15 @@ __interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
 }
 
 #pragma vector = TIMER0_A1_VECTOR
-__interrupt void Timer_A1_ISR(void) {  // Timeout
+__interrupt void Timer_A1_ISR(void) {
   if (TAIV == TAIV_2) {
-    system_state = IDLE;
+    TA0CCTL1 &= ~CCIE; // Disable this interrupt
+    if (system_state == IDLE) {  // If in IDLE and holding the button go to MENU
+      system_state = MENU;
+      __bic_SR_register_on_exit(LPM3_bits);
+    }
+    else {  // Else in COMMAND or COUNT and timed out, go to IDLE
+      system_state = IDLE;
+    }
   }
-  TA0CCTL1 &= ~CCIE;
 }
