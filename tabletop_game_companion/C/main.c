@@ -2,9 +2,9 @@
 #include "_74AHC164.h"
 #include "init.h"
 /*
-Constant definitions
+Definitions
 */
-#define DEBOUCE_COUNT 1000  // Placeholder value
+#define DEBOUCE_COUNT 100  // Placeholder value
 #define COMMAND_TIMEOUT 10000  // Placeholder value
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
@@ -18,16 +18,52 @@ FSM type definition
 typedef enum {
   IDLE,
   COMMAND,
-  RANDOM,
-  COUNT
+  COUNT,
+  RANDOM
 } state_t;
 /*
 Global variable instantiations
 */
 volatile state_t system_state = IDLE;
-volatile unsigned int temp_timer = 0x00;
 volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
+volatile unsigned char current_count = 0;
+/*
+Helper functions
+*/
+unsigned char hex_to_decimal(unsigned char input) {  // Return %10 on 2-digit hex digits in char
+  unsigned char upper = (input & 0xF0) >> 4;
+  unsigned char lower = (input & 0x0F);
+  upper = upper % 10;
+  lower = lower % 10;
+  return (upper << 4) | lower;
+}
+void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts BCD
+  unsigned char val = 0x08;
+  unsigned char i;
+  for (i = 0; i < 7; i++) {
+    SIPO_reset();
+    SIPO_shift(SHIFT_BUFFER(val));
+    __delay_cycles(50); 
+    val += 0x10; 
+    if (val > 0x98) {
+      val = 0x08;
+    }
+  }
+}
+void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts BCD
+  unsigned char val = 0x00;
+  unsigned char i;
+  for (i = 0; i < 20; i++) {
+    SIPO_reset();
+    SIPO_shift(SHIFT_BUFFER(val));
+    __delay_cycles(50);
+    val++;
+    if ((val & 0x0F) > 0x09) {
+      val += 0x06; 
+    }
+  }
+}
 /*
 Main function
 */
@@ -42,7 +78,7 @@ int main(void) {
   /*
   Init Timer_A
   */
-  TACTL = TASSEL_2 + MC_2;  // SMCLK, continuous mode
+  TA0CTL = TASSEL_1 + MC_2; // ACLK, continuous mode
   /*
   Enable P2.1 interrupt
   */
@@ -54,27 +90,32 @@ int main(void) {
   /*
   FSM loop
   */
-  int test_flag = 1;
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
-        SIPO_shift(SHIFT_BUFFER(0x10));
-        __bis_SR_register(LPM0_bits + GIE);
+        SIPO_shift(SHIFT_BUFFER(0x8F));
+        __bis_SR_register(LPM3_bits + GIE);
         break;
+
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
         SIPO_shift(SHIFT_BUFFER(0x20));
-        //P2IES |= (BIT1 | BIT2);  // Set edge select to high-low
-        //P2IFG &= ~(BIT1 | BIT2);  // Clear flags
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
-        __bis_SR_register(LPM0_bits + GIE);
+        __bis_SR_register(LPM3_bits + GIE);
         break;
-      case RANDOM:  // Increment counter and display for some time
-        SIPO_shift(SHIFT_BUFFER(0x30));
-        __bis_SR_register(LPM0_bits + GIE);
-        break;
+
       case COUNT:  // Make "random" number in set range and display for some time
-      SIPO_shift(SHIFT_BUFFER(0x40));
-      __bis_SR_register(LPM0_bits + GIE);
+        SIPO_shift(SHIFT_BUFFER(current_count));  // MAKE THIS %10 TO REMOVE LETTERS!!!
+        P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
+        __bis_SR_register(LPM3_bits + GIE);
+        break;
+
+      case RANDOM:  // Increment counter and display for some time
+        rng_num = hex_to_decimal(rng_num);
+        display_scramble_1_digit();
+        SIPO_shift(SHIFT_BUFFER(rng_num));
+        __delay_cycles(5000);
+        system_state = IDLE;
+        __bis_SR_register(LPM3_bits + GIE);
         break;
    }
   }
@@ -98,11 +139,13 @@ __interrupt void Port_2_ISR(void) {
         P2IES ^= active_pin;  // Switch relevant edge
         P2IFG &= ~active_pin;  // Clear any accumulated button flags
         break;
+
       case COMMAND:
         if (DEBOUNCE_DONE) { // If rising transition
           switch (active_pin) {
             case BIT1:
               system_state = RANDOM;
+              rng_num = TAR;
               break;
             case BIT2:
               system_state = COUNT;
@@ -124,12 +167,31 @@ __interrupt void Port_2_ISR(void) {
           TACCR0 = TAR + DEBOUCE_COUNT; // Schedule debounce interrupt
           TACCTL0 = CCIE; // Enable Timer_A interrupt 0
         }
+        P2IE &= ~active_pin;   // Disable interrupt to prevent bounce
+        P2IES ^= active_pin;   // Flip edge to look for Release
+        P2IFG &= ~active_pin;  // Clear flag so we don't loop forever
+        break;
+
+      case COUNT:
+        if (DEBOUNCE_DONE) { // If rising transition
+          if (active_pin == BIT2) {
+            current_count +=1;
+            system_state = COUNT;
+          }
+          else {
+          system_state = IDLE;
+          }
+        }
+        else {
+          TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
+          TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
+        }
         P2IE &= ~active_pin;   // Disable interrupt for active pin
         P2IES ^= active_pin;   // Switch relevant edge
         P2IFG &= ~active_pin;  // Clear flag
         break;
     }
-    __bic_SR_register_on_exit(LPM0_bits);
+    __bic_SR_register_on_exit(LPM3_bits);
 }
 
 #pragma vector = TIMER0_A0_VECTOR

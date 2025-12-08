@@ -2,17 +2,20 @@
 #include "init.h"
 
 void MSP430G2452_init() {
-    WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
+  WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
   /*
   Init clock
   */
-  BCSCTL2 |= SELM_3;  // Select VLO as MCLK source
-  BCSCTL2 |= SELS;  // Selec VLO as SMCLK source
-  BCSCTL3 = LFXT1S_2;  // Selec VLO as ACLK source
+  BCSCTL3 |= LFXT1S_2; // Set LFXT1 to VLO mode (Must be first)
+  IFG1 &= ~OFIFG; // Clear Oscillator Fault Flag to allow clock switch
+  __delay_cycles(50); // Short delay to let VLO stabilize
+  BCSCTL2 |= SELM_3 + DIVM_1 + SELS + DIVS_1; // Switch MCLK/SMCLK to VLO /8
+  __delay_cycles(500); // Short delay to let VLO stabilize
+  __bis_SR_register(SCG0 + SCG1);
   /*
   Init Timer_A
   */
-  TACTL |= TASSEL_3;  // Set Timer_A clock to SMCLK (VLO)
+  TACTL |= (TASSEL_1 | ID_0);  // Set Timer_A clock to ACLK (VLO /1)
   TACTL &= ~(MC_0);  // Set Timer_A to stop mode
   TACTL |= TACLR;  // Clear Timer_A
   /*
