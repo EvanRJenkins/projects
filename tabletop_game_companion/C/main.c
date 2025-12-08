@@ -45,12 +45,55 @@ volatile unsigned char menu_count = 8;
 /*
 Helper functions
 */
-unsigned char hex_to_decimal(unsigned char input) {  // Return %10 on 2-digit hex digits in char
+unsigned char hex_MOD_10(unsigned char input) {  // Return %10 on 2-digit hex digits in char
   unsigned char upper = (input & 0xF0) >> 4;
   unsigned char lower = (input & 0x0F);
   upper = upper % 10;
   lower = lower % 10;
   return (upper << 4) | lower;
+}
+unsigned char hex_to_BCD(unsigned char input) {
+  if (input > 99) {  // limit input to 99 (remove letters)
+    input = 99; 
+  }
+  unsigned char tens = input / 10;
+  unsigned char ones = input % 10;
+  return (tens << 4) | ones;
+}
+unsigned char BCD_mod(unsigned char input) {
+  unsigned char upper = (input & 0xF0) >> 4;
+  unsigned char lower = (input & 0x0F);
+  unsigned char total_val = (upper * 10) + lower;
+  unsigned char result_int = 0;
+  switch (menu_flags) {  // Get random number in flag range
+    case RANDOM_RANGE_20:
+      result_int = (total_val % 20) + 1;
+      break;
+    case RANDOM_RANGE_12:
+      result_int = (total_val % 12) + 1;
+      break;
+    case RANDOM_RANGE_10:
+      result_int = (total_val % 10) + 1;
+      break;
+    case RANDOM_RANGE_8:
+      result_int = (total_val % 8) + 1;
+      break;
+    case RANDOM_RANGE_6:
+      result_int = (total_val % 6) + 1;
+      break;
+    case RANDOM_RANGE_4:
+      result_int = (total_val % 4) + 1;
+      break;
+    case RANDOM_RANGE_2:
+      result_int = (total_val % 2) + 1;
+      break;
+    default:
+      result_int = total_val; // Pass if no flag
+      break;
+  }
+  unsigned char tens = result_int / 10;  // 12 / 10 = 1
+  unsigned char ones = result_int % 10;  // 12 % 10 = 2
+  return (tens << 4) | ones;  // Shift tens to upper (0x10), OR with ones (0x02)
 }
 void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts BCD
   unsigned char val = 0x08;
@@ -124,36 +167,43 @@ int main(void) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
         ready_active_pin(BIT1);
-        SIPO_shift(SHIFT_BUFFER(0xF8));
+        SIPO_shift(SHIFT_BUFFER(0xF8));  // Both displays off
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
-        SIPO_shift(SHIFT_BUFFER(0x20));
+        SIPO_shift(SHIFT_BUFFER(0x00));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
       case COUNT:  // Make "random" number in set range and display for some time
-        SIPO_shift(SHIFT_BUFFER(current_count));  // MAKE THIS %10 TO REMOVE LETTERS!!!
+        SIPO_shift(SHIFT_BUFFER(hex_to_BCD(current_count)));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
       case RANDOM:  // Increment counter and display for some time
-        rng_num = hex_to_decimal(rng_num);
+        rng_num = BCD_mod(hex_MOD_10(rng_num));
         display_scramble_1_digit();
         SIPO_shift(SHIFT_BUFFER(rng_num));
-        __delay_cycles(10000);
+        __delay_cycles(30000);  // Limit display time
         system_state = IDLE;
         break;
       
       case MENU:  // Switch random range or clear counter
-        if (menu_count == 8) {
-        SIPO_shift(SHIFT_BUFFER(0x99));
+        if (menu_count == 8) {  // Flash alternating displays to indicate MENU state
+        SIPO_shift(SHIFT_BUFFER(0x88));
+        __delay_cycles(2000);
+        SIPO_shift(SHIFT_BUFFER(0xFF));
+        __delay_cycles(2000);
+        SIPO_shift(SHIFT_BUFFER(0x88));
+        __delay_cycles(2000);
+        SIPO_shift(SHIFT_BUFFER(0xFF));
+        __delay_cycles(2000);
         }
         else {
-          SIPO_shift((menu_count + 1));  // Display 1-8 instead of 0-7 for non-technical users
+          SIPO_shift((menu_count));  // Display on left to indicate menu mode
         }
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits);
@@ -213,7 +263,7 @@ __interrupt void Port_2_ISR(void) {
       case COUNT:
         if (DEBOUNCE_DONE) { // If rising transition
           if (active_pin == BIT2) {
-            current_count +=1;
+            current_count += 1;
             system_state = COUNT;
           }
           else {
