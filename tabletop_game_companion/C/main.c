@@ -93,7 +93,7 @@ int main(void) {
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
-        SIPO_shift(SHIFT_BUFFER(0x8F));
+        SIPO_shift(SHIFT_BUFFER(0xF8));
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
@@ -183,6 +183,14 @@ __interrupt void Port_2_ISR(void) {
           }
         }
         else {
+          if (P2IFG & BIT1) {  // If P2.1 triggered
+            active_pin = BIT1;
+            P2IE &= ~BIT2; // Disable P2.2
+          }
+          else {  // Do the opposite
+            active_pin = BIT2;
+            P2IE &= ~BIT1;
+          }
           TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
           TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
         }
