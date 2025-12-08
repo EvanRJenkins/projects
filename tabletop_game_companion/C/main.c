@@ -4,7 +4,7 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 100  // Placeholder value
+#define DEBOUCE_COUNT 25  // Placeholder value
 #define LONG_PRESS_CYCLES 25000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
@@ -41,7 +41,7 @@ volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
 volatile unsigned char current_count = 0;
 volatile unsigned char menu_flags = 0x00;
-volatile unsigned char menu_count = 0;
+volatile unsigned char menu_count = 8;
 /*
 Helper functions
 */
@@ -149,14 +149,11 @@ int main(void) {
         break;
       
       case MENU:  // Switch random range or clear counter
-        if (menu_count == 0) {
+        if (menu_count == 8) {
         SIPO_shift(SHIFT_BUFFER(0x99));
         }
         else {
-          SIPO_shift(menu_count);
-        }
-        while ((P2IN & active_pin) == 0) {  // Wait through rising edge to skip debounce
-          ;
+          SIPO_shift((menu_count + 1));  // Display 1-8 instead of 0-7 for non-technical users
         }
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits);
@@ -238,12 +235,17 @@ __interrupt void Port_2_ISR(void) {
         case MENU:
         if (DEBOUNCE_DONE) { // If rising transition
           if (active_pin == BIT2) {
-            menu_count +=1;
+            if (menu_count < 7) {
+              ++menu_count;
+            }
+            else {
+              menu_count = 0;
+            }
             system_state = MENU;
           }
           else {
             menu_flags = (1 << menu_count);
-            menu_count = 0;
+            menu_count = 8;
             system_state = IDLE;
           }
         }
@@ -275,6 +277,8 @@ __interrupt void Timer_A1_ISR(void) {
     TA0CCTL1 &= ~CCIE; // Disable this interrupt
     if (system_state == IDLE) {  // If in IDLE and holding the button go to MENU
       system_state = MENU;
+      menu_count = 8;  // Ensure menu_count starts at reset condition
+      debounce_high_low_active_pin(); // Override rising edge interrupt
       __bic_SR_register_on_exit(LPM3_bits);
     }
     else {  // Else in COMMAND or COUNT and timed out, go to IDLE
