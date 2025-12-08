@@ -9,6 +9,17 @@ Definitions
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
+Menu flag bitsmasks
+*/
+#define COUNTER_RESET   (1 << 8)
+#define RANDOM_RANGE_2  (1 << 7)
+#define RANDOM_RANGE_4  (1 << 5)
+#define RANDOM_RANGE_6  (1 << 4)
+#define RANDOM_RANGE_8  (1 << 3)
+#define RANDOM_RANGE_10 (1 << 2)
+#define RANDOM_RANGE_12 (1 << 1)
+#define RANDOM_RANGE_20 (1 << 0)
+/*
 Shift buffer to fix MSB and LSB mismatch
 */
 #define SHIFT_BUFFER(num)  ((((num) & 0x0F) << 4) | (((num) & 0xF0) >> 4))
@@ -19,7 +30,8 @@ typedef enum {
   IDLE,
   COMMAND,
   COUNT,
-  RANDOM
+  RANDOM,
+  MENU
 } state_t;
 /*
 Global variable instantiations
@@ -28,6 +40,7 @@ volatile state_t system_state = IDLE;
 volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
 volatile unsigned char current_count = 0;
+volatile unsigned char menu_flags = 0x00;
 /*
 Helper functions
 */
@@ -64,6 +77,10 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
     }
   }
 }
+void schedule_debounce(void){
+  TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
+  TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
+}
 /*
 Main function
 */
@@ -80,19 +97,15 @@ int main(void) {
   */
   TA0CTL = TASSEL_1 + MC_2; // ACLK, continuous mode
   /*
-  Enable P2.1 interrupt
-  */
-  active_pin = BIT1;
-  P2IES |= BIT1;  // Set edge select to high-low
-  P2IFG &= ~BIT1;  // Clear flag
-  P2IE |= BIT1;  // Enable interrupt for P2.1
-  __bis_SR_register(GIE);
-  /*
   FSM loop
   */
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
+        active_pin = BIT1;
+        P2IES |= active_pin;  // Set edge select to high-low
+        P2IFG &= ~active_pin;  // Clear flag
+        P2IE |= active_pin;  // Enable interrupt for P2.1
         SIPO_shift(SHIFT_BUFFER(0xF8));
         __bis_SR_register(LPM3_bits + GIE);
         break;
@@ -113,9 +126,12 @@ int main(void) {
         rng_num = hex_to_decimal(rng_num);
         display_scramble_1_digit();
         SIPO_shift(SHIFT_BUFFER(rng_num));
-        __delay_cycles(5000);
+        __delay_cycles(10000);
         system_state = IDLE;
-        __bis_SR_register(LPM3_bits + GIE);
+        break;
+      
+      case MENU:  // Switch random range or clear counter
+
         break;
    }
   }
@@ -132,8 +148,7 @@ __interrupt void Port_2_ISR(void) {
           system_state = COMMAND;
         }
         else {
-          TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
-          TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
+          schedule_debounce();
         }
         P2IE &= ~active_pin;  // Disable button interrupt
         P2IES ^= active_pin;  // Switch relevant edge
@@ -164,8 +179,7 @@ __interrupt void Port_2_ISR(void) {
             active_pin = BIT2;
             P2IE &= ~BIT1;
           }
-          TACCR0 = TAR + DEBOUCE_COUNT; // Schedule debounce interrupt
-          TACCTL0 = CCIE; // Enable Timer_A interrupt 0
+          schedule_debounce();
         }
         P2IE &= ~active_pin;   // Disable interrupt to prevent bounce
         P2IES ^= active_pin;   // Flip edge to look for Release
@@ -191,8 +205,7 @@ __interrupt void Port_2_ISR(void) {
             active_pin = BIT2;
             P2IE &= ~BIT1;
           }
-          TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
-          TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
+          schedule_debounce();
         }
         P2IE &= ~active_pin;   // Disable interrupt for active pin
         P2IES ^= active_pin;   // Switch relevant edge
