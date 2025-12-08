@@ -81,6 +81,17 @@ void schedule_debounce(void){
   TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
   TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
 }
+void ready_active_pin(unsigned char pin) {
+  active_pin = pin;  // Global
+  P2IES |= active_pin;  // Set edge select to high-low
+  P2IFG &= ~active_pin;  // Clear flag
+  P2IE |= active_pin;  // Enable interrupt for P2.1
+}
+void debounce_high_low_active_pin() {
+  P2IE &= ~active_pin;  // Disable button interrupt
+  P2IES ^= active_pin;  // Switch relevant edge
+  P2IFG &= ~active_pin;  // Clear any accumulated button flags
+}
 /*
 Main function
 */
@@ -102,10 +113,7 @@ int main(void) {
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
-        active_pin = BIT1;
-        P2IES |= active_pin;  // Set edge select to high-low
-        P2IFG &= ~active_pin;  // Clear flag
-        P2IE |= active_pin;  // Enable interrupt for P2.1
+        ready_active_pin(BIT1);
         SIPO_shift(SHIFT_BUFFER(0xF8));
         __bis_SR_register(LPM3_bits + GIE);
         break;
@@ -150,9 +158,7 @@ __interrupt void Port_2_ISR(void) {
         else {
           schedule_debounce();
         }
-        P2IE &= ~active_pin;  // Disable button interrupt
-        P2IES ^= active_pin;  // Switch relevant edge
-        P2IFG &= ~active_pin;  // Clear any accumulated button flags
+        debounce_high_low_active_pin();
         break;
 
       case COMMAND:
@@ -181,9 +187,7 @@ __interrupt void Port_2_ISR(void) {
           }
           schedule_debounce();
         }
-        P2IE &= ~active_pin;   // Disable interrupt to prevent bounce
-        P2IES ^= active_pin;   // Flip edge to look for Release
-        P2IFG &= ~active_pin;  // Clear flag so we don't loop forever
+        debounce_high_low_active_pin();
         break;
 
       case COUNT:
@@ -207,9 +211,7 @@ __interrupt void Port_2_ISR(void) {
           }
           schedule_debounce();
         }
-        P2IE &= ~active_pin;   // Disable interrupt for active pin
-        P2IES ^= active_pin;   // Switch relevant edge
-        P2IFG &= ~active_pin;  // Clear flag
+        debounce_high_low_active_pin();
         break;
     }
     __bic_SR_register_on_exit(LPM3_bits);
