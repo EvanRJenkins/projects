@@ -4,21 +4,20 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 25  // Placeholder value
+#define DEBOUCE_COUNT 35  // Placeholder value
 #define LONG_PRESS_CYCLES 25000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
 Menu flag bitsmasks
 */
-#define RANDOM_RANGE_20 (1 << 7)
-#define RANDOM_RANGE_12 (1 << 6)
-#define RANDOM_RANGE_10 (1 << 5)
-#define RANDOM_RANGE_8  (1 << 4)
-#define RANDOM_RANGE_6  (1 << 3)
-#define RANDOM_RANGE_4  (1 << 2)
-#define RANDOM_RANGE_2  (1 << 1)
 #define COUNTER_RESET   (1 << 0)
+#define RANDOM_RANGE_2  (1 << 1)
+#define RANDOM_RANGE_6  (1 << 3)
+#define RANDOM_RANGE_8  (1 << 4)
+#define RANDOM_RANGE_10 (1 << 5)
+#define RANDOM_RANGE_12 (1 << 6)
+#define SINGLE_DIGIT_RANGE (menu_flags & (RANDOM_RANGE_2 | RANDOM_RANGE_4 | RANDOM_RANGE_8))
 /*
 Shift buffer to fix MSB and LSB mismatch
 */
@@ -66,26 +65,26 @@ unsigned char BCD_mod(unsigned char input) {
   unsigned char total_val = (upper * 10) + lower;
   unsigned char result_int = 0;
   switch (menu_flags) {  // Get random number in flag range
-    case RANDOM_RANGE_20:
-      result_int = (total_val % 20) + 1;
-      break;
-    case RANDOM_RANGE_12:
-      result_int = (total_val % 12) + 1;
-      break;
-    case RANDOM_RANGE_10:
-      result_int = (total_val % 10) + 1;
-      break;
-    case RANDOM_RANGE_8:
-      result_int = (total_val % 8) + 1;
-      break;
-    case RANDOM_RANGE_6:
-      result_int = (total_val % 6) + 1;
+    case RANDOM_RANGE_2:
+      result_int = (total_val % 2) + 1;
       break;
     case RANDOM_RANGE_4:
       result_int = (total_val % 4) + 1;
       break;
-    case RANDOM_RANGE_2:
-      result_int = (total_val % 2) + 1;
+    case RANDOM_RANGE_6:
+      result_int = (total_val % 6) + 1;
+      break;
+    case RANDOM_RANGE_8:
+      result_int = (total_val % 8) + 1;
+      break;
+    case RANDOM_RANGE_10:
+      result_int = (total_val % 10) + 1;
+      break;
+    case RANDOM_RANGE_12:
+      result_int = (total_val % 12) + 1;
+      break;
+    case RANDOM_RANGE_20:
+      result_int = (total_val % 20) + 1;
       break;
     default:
       result_int = total_val; // Pass if no flag
@@ -178,6 +177,10 @@ int main(void) {
         break;
 
       case COUNT:  // Make "random" number in set range and display for some time
+        if ((menu_flags & 0x01) == 1) {  // If COUNTER_RESET flag 
+          current_count = 0;  // Reset count
+          menu_flags &= 0xFE;  // Lower COUNTER_RESET flag
+        }
         SIPO_shift(SHIFT_BUFFER(hex_to_BCD(current_count)));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits + GIE);
@@ -185,7 +188,12 @@ int main(void) {
 
       case RANDOM:  // Increment counter and display for some time
         rng_num = BCD_mod(hex_MOD_10(rng_num));
+        if (SINGLE_DIGIT_RANGE) {
         display_scramble_1_digit();
+        }
+        else {
+          display_scramble_2_digits();
+        }
         SIPO_shift(SHIFT_BUFFER(rng_num));
         __delay_cycles(30000);  // Limit display time
         system_state = IDLE;
@@ -284,18 +292,19 @@ __interrupt void Port_2_ISR(void) {
 
         case MENU:
         if (DEBOUNCE_DONE) { // If rising transition
-          if (active_pin == BIT2) {
-            if (menu_count < 7) {
+          if (active_pin == BIT2) {  // If count button
+            if (menu_count < 7) {  // Max settings count
               ++menu_count;
             }
             else {
-              menu_count = 0;
+              menu_count = 0;  // Cycle to beginning of count range
             }
-            system_state = MENU;
+            system_state = MENU;  // Stay in MENU
           }
-          else {
-            menu_flags = (1 << menu_count);
-            menu_count = 8;
+          else {  // If return to IDLE button
+            menu_flags &= (0x01);  // Ensure all count settings are off
+            menu_flags |= (1 << menu_count);  // Set new count range if selected
+            menu_count = 8;  // Reset menu_count to default
             system_state = IDLE;
           }
         }
