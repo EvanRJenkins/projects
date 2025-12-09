@@ -13,10 +13,12 @@ Menu flag bitsmasks
 */
 #define COUNTER_RESET   (1 << 0)
 #define RANDOM_RANGE_2  (1 << 1)
+#define RANDOM_RANGE_4  (1 << 2)
 #define RANDOM_RANGE_6  (1 << 3)
 #define RANDOM_RANGE_8  (1 << 4)
 #define RANDOM_RANGE_10 (1 << 5)
 #define RANDOM_RANGE_12 (1 << 6)
+#define RANDOM_RANGE_20 (1 << 7)
 #define SINGLE_DIGIT_RANGE (menu_flags & (RANDOM_RANGE_2 | RANDOM_RANGE_4 | RANDOM_RANGE_8))
 /*
 Shift buffer to fix MSB and LSB mismatch
@@ -44,6 +46,11 @@ volatile unsigned char menu_count = 8;
 /*
 Helper functions
 */
+void SIPO_shift_safe(unsigned char shift_byte) {  // Just SIPO_shift but disables and re-enables interrupts
+  __disable_interrupt();
+  SIPO_shift_safe(shift_byte);
+  __bis_SR_register(GIE);
+}
 unsigned char hex_MOD_10(unsigned char input) {  // Return %10 on 2-digit hex digits in char
   unsigned char upper = (input & 0xF0) >> 4;
   unsigned char lower = (input & 0x0F);
@@ -99,7 +106,7 @@ void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts B
   unsigned char i;
   for (i = 0; i < 7; i++) {
     SIPO_reset();
-    SIPO_shift(SHIFT_BUFFER(val));
+    SIPO_shift_safe(SHIFT_BUFFER(val));
     __delay_cycles(50); 
     val += 0x10; 
     if (val > 0x98) {
@@ -112,7 +119,7 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
   unsigned char i;
   for (i = 0; i < 20; i++) {
     SIPO_reset();
-    SIPO_shift(SHIFT_BUFFER(val));
+    SIPO_shift_safe(SHIFT_BUFFER(val));
     __delay_cycles(50);
     val++;
     if ((val & 0x0F) > 0x09) {
@@ -144,6 +151,16 @@ void set_active_pin(unsigned char pin) {
     P2IE &= ~BIT1; // Disable P2.1
   }
 }
+void MENU_indicator(void) {  // Flash alternating 8 on displays
+  SIPO_shift_safe(SHIFT_BUFFER(0x88));
+  __delay_cycles(2000);
+  SIPO_shift_safe(SHIFT_BUFFER(0xFF));
+  __delay_cycles(2000);
+  SIPO_shift_safe(SHIFT_BUFFER(0x88));
+  __delay_cycles(2000);
+  SIPO_shift_safe(SHIFT_BUFFER(0xFF));
+  __delay_cycles(2000);
+}
 /*
 Main function
 */
@@ -154,7 +171,7 @@ int main(void) {
   */
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
-  SIPO_shift(0x14);
+  SIPO_shift_safe(0x14);
   /*
   Init Timer_A
   */
@@ -166,12 +183,12 @@ int main(void) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
         ready_active_pin(BIT1);
-        SIPO_shift(SHIFT_BUFFER(0xF8));  // Both displays off
+        SIPO_shift_safe(SHIFT_BUFFER(0xF8));  // Both displays off
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
-        SIPO_shift(SHIFT_BUFFER(0x00));
+        SIPO_shift_safe(SHIFT_BUFFER(0x00));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits + GIE);
         break;
@@ -181,7 +198,7 @@ int main(void) {
           current_count = 0;  // Reset count
           menu_flags &= 0xFE;  // Lower COUNTER_RESET flag
         }
-        SIPO_shift(SHIFT_BUFFER(hex_to_BCD(current_count)));
+        SIPO_shift_safe(SHIFT_BUFFER(hex_to_BCD(current_count)));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits + GIE);
         break;
@@ -189,29 +206,22 @@ int main(void) {
       case RANDOM:  // Increment counter and display for some time
         rng_num = BCD_mod(hex_MOD_10(rng_num));
         if (SINGLE_DIGIT_RANGE) {
-        display_scramble_1_digit();
+          display_scramble_1_digit();
         }
         else {
           display_scramble_2_digits();
         }
-        SIPO_shift(SHIFT_BUFFER(rng_num));
+        SIPO_shift_safe(SHIFT_BUFFER(rng_num));
         __delay_cycles(30000);  // Limit display time
         system_state = IDLE;
         break;
       
       case MENU:  // Switch random range or clear counter
         if (menu_count == 8) {  // Flash alternating displays to indicate MENU state
-        SIPO_shift(SHIFT_BUFFER(0x88));
-        __delay_cycles(2000);
-        SIPO_shift(SHIFT_BUFFER(0xFF));
-        __delay_cycles(2000);
-        SIPO_shift(SHIFT_BUFFER(0x88));
-        __delay_cycles(2000);
-        SIPO_shift(SHIFT_BUFFER(0xFF));
-        __delay_cycles(2000);
+          MENU_indicator();
         }
         else {
-          SIPO_shift((menu_count));  // Display on left to indicate menu mode
+          SIPO_shift_safe((menu_count));  // Display on left to indicate menu mode
         }
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         __bis_SR_register(LPM3_bits);
@@ -240,7 +250,6 @@ __interrupt void Port_2_ISR(void) {
         }
         debounce_high_low_active_pin();
         break;
-
       case COMMAND:
         if (DEBOUNCE_DONE) { // If rising transition
           switch (active_pin) {
@@ -267,7 +276,6 @@ __interrupt void Port_2_ISR(void) {
         }
         debounce_high_low_active_pin();
         break;
-
       case COUNT:
         if (DEBOUNCE_DONE) { // If rising transition
           if (active_pin == BIT2) {
@@ -289,7 +297,6 @@ __interrupt void Port_2_ISR(void) {
         }
         debounce_high_low_active_pin();
         break;
-
         case MENU:
         if (DEBOUNCE_DONE) { // If rising transition
           if (active_pin == BIT2) {  // If count button
@@ -322,16 +329,14 @@ __interrupt void Port_2_ISR(void) {
     }
     __bic_SR_register_on_exit(LPM3_bits);
 }
-
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
   TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
   P2IFG &= ~active_pin;  // Clear flag for the specific button that was pressed
   P2IE |= active_pin;    // Re-enable interrupt for that specific button
 }
-
 #pragma vector = TIMER0_A1_VECTOR
-__interrupt void Timer_A1_ISR(void) {
+__interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
   if (TAIV == TAIV_2) {
     TA0CCTL1 &= ~CCIE; // Disable this interrupt
     if (system_state == IDLE) {  // If in IDLE and holding the button go to MENU
@@ -340,7 +345,7 @@ __interrupt void Timer_A1_ISR(void) {
       debounce_high_low_active_pin(); // Override rising edge interrupt
       __bic_SR_register_on_exit(LPM3_bits);
     }
-    else {  // Else in COMMAND or COUNT and timed out, go to IDLE
+    else {  // Else in COMMAND or COUNT, go to IDLE
       system_state = IDLE;
     }
   }
