@@ -8,14 +8,14 @@ void MSP430G2452_init() {
   */
   BCSCTL3 |= LFXT1S_2; // Set LFXT1 to VLO mode (Must be first)
   IFG1 &= ~OFIFG; // Clear Oscillator Fault Flag to allow clock switch
-  __delay_cycles(50); // Short delay to let VLO stabilize
+  __delay_cycles(100); // Short delay to let VLO stabilize
   BCSCTL2 |= SELM_3 + DIVM_0 + SELS + DIVS_1; // Switch MCLK/SMCLK to VLO /0 and VLO /2
   __delay_cycles(500); // Short delay to let VLO stabilize
   __bis_SR_register(SCG0 + SCG1);
   /*
   Init Timer_A
   */
-  TACTL |= (TASSEL_1 | ID_1);  // Set Timer_A clock to ACLK (VLO /2)
+  TACTL |= (TASSEL_1 | ID_2);  // Set Timer_A clock to ACLK (VLO /4)
   TACTL &= ~(MC_0);  // Set Timer_A to stop mode
   TACTL |= TACLR;  // Clear Timer_A
   /*

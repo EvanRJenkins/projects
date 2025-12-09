@@ -4,8 +4,8 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 100  // Placeholder value
-#define LONG_PRESS_CYCLES 10000  // For activating MENU state
+#define DEBOUCE_COUNT 200  // Placeholder value
+#define LONG_PRESS_CYCLES 20000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
@@ -115,7 +115,7 @@ void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts B
   unsigned char i;
   for (i = 0; i < 7; i++) {
     SIPO_reset();
-    SIPO_shift_safe(SHIFT_BUFFER(val));
+    SIPO_shift_safe(val);
     timer_delay(1000);
     val += 0x10; 
     if (val > 0x98) {
@@ -163,13 +163,13 @@ void set_active_pin(unsigned char pin) {
 void MENU_indicator(void) {  // Flash alternating 8 on displays
   __disable_interrupt();
   SIPO_shift(SHIFT_BUFFER(0x88));
-  timer_delay(2000);
+  timer_delay(3000);
   SIPO_shift(SHIFT_BUFFER(0xFF));
-  timer_delay(2000);
+  timer_delay(3000);
   SIPO_shift(SHIFT_BUFFER(0x88));
-  timer_delay(2000);
+  timer_delay(3000);
   SIPO_shift(SHIFT_BUFFER(0xFF));
-  timer_delay(2000);
+  timer_delay(3000);
   __bis_SR_register(GIE);
 }
 /*
@@ -222,7 +222,7 @@ int main(void) {
           display_scramble_2_digits();
         }
         SIPO_shift_safe(SHIFT_BUFFER(rng_num));
-        timer_delay(30000);  // Limit display time
+        timer_delay(50000);  // Limit display time
         system_state = IDLE;
         break;
       
@@ -236,6 +236,7 @@ int main(void) {
           SIPO_shift_safe((menu_count));  // Display on left to indicate menu mode
         }
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
+        P2IES |= (BIT1 | BIT2);  // Set falling edge for P2.1 and P2.2
         __bis_SR_register(LPM3_bits);
         break;
    }
