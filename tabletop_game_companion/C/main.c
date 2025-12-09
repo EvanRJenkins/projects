@@ -4,7 +4,7 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 200  // Placeholder value
+#define DEBOUCE_COUNT 50  // Placeholder value
 #define LONG_PRESS_CYCLES 20000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
