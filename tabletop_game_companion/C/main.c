@@ -5,7 +5,7 @@
 Definitions
 */
 #define DEBOUCE_COUNT 100  // Placeholder value
-#define LONG_PRESS_CYCLES 20000  // For activating MENU state
+#define LONG_PRESS_CYCLES 10000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
@@ -227,7 +227,7 @@ int main(void) {
         break;
       
       case MENU:  // Switch random range or clear counter
-        if (menu_count == -1) {  // Flash alternating displays to indicate MENU state
+        if (menu_indicator_flag == 1) {  // Flash alternating displays to indicate MENU state
           P2IFG &= ~(BIT1 | BIT2);
           MENU_indicator();
           menu_indicator_flag = 0;
