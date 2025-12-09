@@ -4,8 +4,8 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 35  // Placeholder value
-#define LONG_PRESS_CYCLES 25000  // For activating MENU state
+#define DEBOUCE_COUNT 100  // Placeholder value
+#define LONG_PRESS_CYCLES 20000  // For activating MENU state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
@@ -42,10 +42,19 @@ volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
 volatile unsigned char current_count = 0;
 volatile unsigned char menu_flags = 0x00;
-volatile unsigned char menu_count = 8;
+volatile signed char menu_count = -1;
+volatile unsigned char delay_flag = 0;
+volatile unsigned char menu_indicator_flag = 1;
 /*
 Helper functions
 */
+void timer_delay(unsigned int cycles) {
+  __disable_interrupt();  // Prevent interrupt interference
+  delay_flag = 1;
+  TACCR1 = TAR + cycles;  // Start the Long Press Timer
+  TA0CCTL1 = CCIE;  // Enable Timer A1 interrupt
+  __bis_SR_register(LPM3_bits + GIE);  // LPM until delay interrupt occurs
+}
 void SIPO_shift_safe(unsigned char shift_byte) {  // Just SIPO_shift but disables and re-enables interrupts
   __disable_interrupt();
   SIPO_shift(shift_byte);
@@ -107,7 +116,7 @@ void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts B
   for (i = 0; i < 7; i++) {
     SIPO_reset();
     SIPO_shift_safe(SHIFT_BUFFER(val));
-    __delay_cycles(50); 
+    timer_delay(1000);
     val += 0x10; 
     if (val > 0x98) {
       val = 0x08;
@@ -120,7 +129,7 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
   for (i = 0; i < 20; i++) {
     SIPO_reset();
     SIPO_shift_safe(SHIFT_BUFFER(val));
-    __delay_cycles(50);
+    timer_delay(1000);
     val++;
     if ((val & 0x0F) > 0x09) {
       val += 0x06; 
@@ -152,14 +161,16 @@ void set_active_pin(unsigned char pin) {
   }
 }
 void MENU_indicator(void) {  // Flash alternating 8 on displays
-  SIPO_shift_safe(SHIFT_BUFFER(0x88));
-  __delay_cycles(2000);
-  SIPO_shift_safe(SHIFT_BUFFER(0xFF));
-  __delay_cycles(2000);
-  SIPO_shift_safe(SHIFT_BUFFER(0x88));
-  __delay_cycles(2000);
-  SIPO_shift_safe(SHIFT_BUFFER(0xFF));
-  __delay_cycles(2000);
+  __disable_interrupt();
+  SIPO_shift(SHIFT_BUFFER(0x88));
+  timer_delay(2000);
+  SIPO_shift(SHIFT_BUFFER(0xFF));
+  timer_delay(2000);
+  SIPO_shift(SHIFT_BUFFER(0x88));
+  timer_delay(2000);
+  SIPO_shift(SHIFT_BUFFER(0xFF));
+  timer_delay(2000);
+  __bis_SR_register(GIE);
 }
 /*
 Main function
@@ -211,13 +222,15 @@ int main(void) {
           display_scramble_2_digits();
         }
         SIPO_shift_safe(SHIFT_BUFFER(rng_num));
-        __delay_cycles(30000);  // Limit display time
+        timer_delay(30000);  // Limit display time
         system_state = IDLE;
         break;
       
       case MENU:  // Switch random range or clear counter
-        if (menu_count == 8) {  // Flash alternating displays to indicate MENU state
+        if (menu_count == -1) {  // Flash alternating displays to indicate MENU state
+          P2IFG &= ~(BIT1 | BIT2);
           MENU_indicator();
+          menu_indicator_flag = 0;
         }
         else {
           SIPO_shift_safe((menu_count));  // Display on left to indicate menu mode
@@ -311,6 +324,7 @@ __interrupt void Port_2_ISR(void) {
             menu_flags &= (0x01);  // Ensure all count settings are off
             menu_flags |= (1 << menu_count);  // Set new count range if selected
             menu_count = 8;  // Reset menu_count to default
+            menu_indicator_flag = 1;
             system_state = IDLE;
           }
         }
@@ -340,8 +354,12 @@ __interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
     TA0CCTL1 &= ~CCIE; // Disable this interrupt
     if (system_state == IDLE) {  // If in IDLE and holding the button go to MENU
       system_state = MENU;
-      menu_count = 8;  // Ensure menu_count starts at reset condition
+      menu_count = -1;  // Ensure menu_count starts at reset condition
       debounce_high_low_active_pin(); // Override rising edge interrupt
+      __bic_SR_register_on_exit(LPM3_bits);
+    }
+    else if (delay_flag == 1) {
+      delay_flag = 0;
       __bic_SR_register_on_exit(LPM3_bits);
     }
     else {  // Else in COMMAND or COUNT, go to IDLE
