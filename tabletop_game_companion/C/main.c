@@ -48,7 +48,7 @@ Helper functions
 */
 void SIPO_shift_safe(unsigned char shift_byte) {  // Just SIPO_shift but disables and re-enables interrupts
   __disable_interrupt();
-  SIPO_shift_safe(shift_byte);
+  SIPO_shift(shift_byte);
   __bis_SR_register(GIE);
 }
 unsigned char hex_MOD_10(unsigned char input) {  // Return %10 on 2-digit hex digits in char
@@ -171,7 +171,6 @@ int main(void) {
   */
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
-  SIPO_shift_safe(0x14);
   /*
   Init Timer_A
   */
@@ -182,8 +181,8 @@ int main(void) {
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
-        ready_active_pin(BIT1);
         SIPO_shift_safe(SHIFT_BUFFER(0xF8));  // Both displays off
+        ready_active_pin(BIT1);
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
