@@ -21,7 +21,7 @@ Menu flag bitsmasks
 #define RANDOM_RANGE_20 (1 << 7)
 #define SINGLE_DIGIT_RANGE (menu_flags & (RANDOM_RANGE_2 | RANDOM_RANGE_4 | RANDOM_RANGE_8))
 /*
-Shift buffer to fix MSB and LSB mismatch
+MACRO to switch digit order
 */
 #define SHIFT_BUFFER(num)  ((((num) & 0x0F) << 4) | (((num) & 0xF0) >> 4))
 /*
