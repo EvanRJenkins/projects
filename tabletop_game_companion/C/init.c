@@ -15,8 +15,8 @@ void MSP430G2452_init() {
   /*
   Init Timer_A
   */
-  TACTL |= (TASSEL_1 | ID_2);  // Set Timer_A clock to ACLK (VLO /4)
-  TACTL &= ~(MC_0);  // Set Timer_A to stop mode
+  TACTL |= TACLR;  // Clear Timer_A
+  TACTL = TASSEL_1 + MC_2 + ID_2;  // Set Timer_A clock to ACLK (VLO /4)
   TACTL |= TACLR;  // Clear Timer_A
   /*
   Init pins
@@ -28,5 +28,7 @@ void MSP430G2452_init() {
   P2REN |= (BIT1 | BIT2);  // Enable resistor for P2.1 and P2.2
   P2REN &= ~BIT3;  // Disable resistor for P2.3
   P2OUT |= (BIT1 | BIT2);  // Set P2.1 and P2.2 resistors to pull-up mode
-  P2DIR &= ~BIT3;
+  P2DIR |= BIT3;  // Set P2.3 to output for measuring timing
+  P2OUT &= ~BIT3;  // Start P2.3 low to monitor low-high transition
+  P2REN &= ~BIT3;  // Disable resistor for P2.3
 }

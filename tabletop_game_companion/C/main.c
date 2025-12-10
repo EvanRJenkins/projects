@@ -5,8 +5,8 @@
 Definitions
 */
 #define DEBOUCE_COUNT 50  // Placeholder value
-#define LONG_PRESS_CYCLES 20000  // For activating MENU state
-#define TIMEOUT_CYCLES 50000  // For timing uut of COMMAND state
+#define LONG_PRESS_CYCLES 5000  // For activating MENU state
+#define TIMEOUT_CYCLES 20000  // For timing uut of COMMAND state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
@@ -153,7 +153,7 @@ void display_scramble_1_digit(void) {  // RNG visual sequence that only shifts B
   for (i = 0; i < 7; i++) {
     SIPO_reset();
     SIPO_shift_safe(val);
-    timer_delay(1000);
+    timer_delay(100);
     val += 0x10; 
     if (val > 0x98) {
       val = 0x08;
@@ -166,7 +166,7 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
   for (i = 0; i < 20; i++) {
     SIPO_reset();
     SIPO_shift_safe(SHIFT_BUFFER(val));
-    timer_delay(1000);
+    timer_delay(100);
     val++;
     if ((val & 0x0F) > 0x09) {
       val += 0x06; 
@@ -176,14 +176,20 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
 void MENU_indicator(void) {  // Flash alternating 8 on displays
   __disable_interrupt();
   SIPO_shift(SHIFT_BUFFER(0xF8));
-  timer_delay(3000);
+  timer_delay(1000);
   SIPO_shift(SHIFT_BUFFER(0x8F));
-  timer_delay(3000);
+  timer_delay(1000);
   SIPO_shift(SHIFT_BUFFER(0xF8));
-  timer_delay(3000);
+  timer_delay(1000);
   SIPO_shift(SHIFT_BUFFER(0x8F));
-  timer_delay(3000);
+  timer_delay(1000);
   __bis_SR_register(GIE);
+}
+void set_timing_pin(void) {
+  P2OUT |= BIT3;
+}
+void reset_timing_pin(void) {
+  P2OUT &= ~BIT3;
 }
 /*
 Main function
@@ -195,10 +201,6 @@ int main(void) {
   */
   SIPO_reg_init(&P1OUT, &P1OUT, &P1OUT);
   SIPO_pin_init(BIT0, BIT2, BIT1);
-  /*
-  Init Timer_A
-  */
-  TA0CTL = TASSEL_1 + MC_2; // ACLK, continuous mode
   /*
   FSM loop
   */
@@ -230,6 +232,7 @@ int main(void) {
         break;
 
       case RANDOM:  // Increment counter and display for some time
+        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
         rng_num = BCD_mod(hex_MOD_10(rng_num));
         if (SINGLE_DIGIT_RANGE) {
           display_scramble_1_digit();
@@ -238,8 +241,8 @@ int main(void) {
           display_scramble_2_digits();
         }
         SIPO_shift_safe(SHIFT_BUFFER(rng_num));
-        timer_delay(50000);  // Limit display time
-        system_state = IDLE;
+        start_timer_timeout();  // Start timeout countdown
+        __bis_SR_register(LPM3_bits + GIE);
         break;
       
       case MENU:  // Switch random range or clear counter
@@ -379,11 +382,8 @@ __interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
     else if (flags2 & DELAY_FLAG) {
       flags2 ^= DELAY_FLAG;  // Lower delay_flag
     }
-    else if ((system_state == COMMAND) || (system_state == COUNT) || (system_state == MENU)) {
+    else {  // End timeout
       TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
-      system_state = IDLE;
-    }
-    else {  // Else in COMMAND or COUNT, go to IDLE
       system_state = IDLE;
     }
     _bic_SR_register_on_exit(LPM3_bits);
