@@ -26,6 +26,7 @@ void MSP430G2452_init() {
   P1OUT &= ~(BIT0 | BIT1);  // Set others low
   P2DIR &= ~(BIT1 | BIT2);  // Set P2.1 and P2.2 direction to input
   P2REN |= (BIT1 | BIT2);  // Enable resistor for P2.1 and P2.2
+  P2REN &= ~BIT3;  // Disable resistor for P2.3
   P2OUT |= (BIT1 | BIT2);  // Set P2.1 and P2.2 resistors to pull-up mode
   P2DIR &= ~BIT3;
 }

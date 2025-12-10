@@ -6,6 +6,7 @@ Definitions
 */
 #define DEBOUCE_COUNT 50  // Placeholder value
 #define LONG_PRESS_CYCLES 20000  // For activating MENU state
+#define TIMEOUT_CYCLES 50000  // For timing uut of COMMAND state
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
@@ -160,6 +161,14 @@ void set_active_pin(unsigned char pin) {
     P2IE &= ~BIT1; // Disable P2.1
   }
 }
+void start_timer_timeout(void) {
+  TACCR1 = TAR + TIMEOUT_CYCLES;  // Start the Timeout Counter
+  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
+}
+void start_timer_longpress(void) { 
+  TACCR1 = TAR + LONG_PRESS_CYCLES;  // Start the Long Press Timer
+  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
+}
 void MENU_indicator(void) {  // Flash alternating 8 on displays
   __disable_interrupt();
   SIPO_shift(SHIFT_BUFFER(0xF8));
@@ -200,16 +209,19 @@ int main(void) {
       case COMMAND:  // Jump to MENU, COUNT, or RANDOM depending on user input
         SIPO_shift_safe(SHIFT_BUFFER(0x00));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
+        start_timer_timeout();  // Start timeout countdown 
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
       case COUNT:  // Make "random" number in set range and display for some time
+        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
         if ((menu_flags & 0x01) == 1) {  // If COUNTER_RESET flag 
           current_count = 0;  // Reset count
           menu_flags &= 0xFE;  // Lower COUNTER_RESET flag
         }
         SIPO_shift_safe(SHIFT_BUFFER(hex_to_BCD(current_count)));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
+        start_timer_timeout();  // Start timeout countdown 
         __bis_SR_register(LPM3_bits + GIE);
         break;
 
@@ -227,6 +239,7 @@ int main(void) {
         break;
       
       case MENU:  // Switch random range or clear counter
+        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
         if (menu_indicator_flag == 1) {  // Flash alternating displays to indicate MENU state
           P2IFG &= ~(BIT1 | BIT2);
           MENU_indicator();
@@ -237,6 +250,7 @@ int main(void) {
         }
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
         P2IES |= (BIT1 | BIT2);  // Set falling edge for P2.1 and P2.2
+        start_timer_timeout();  // Start timeout countdown 
         __bis_SR_register(LPM3_bits);
         break;
    }
@@ -258,12 +272,12 @@ __interrupt void Port_2_ISR(void) {
         }
         else { // If falling transition (Button Press)
           schedule_debounce();
-          TACCR1 = TAR + LONG_PRESS_CYCLES;  // Start the Long Press Timer
-          TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
+          start_timer_longpress();  // Start the long press timer
         }
         debounce_high_low_active_pin();
         break;
       case COMMAND:
+        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
         if (DEBOUNCE_DONE) { // If rising transition
           switch (active_pin) {
             case BIT1:
@@ -357,14 +371,17 @@ __interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
       system_state = MENU;
       menu_count = -1;  // Ensure menu_count starts at reset condition
       debounce_high_low_active_pin(); // Override rising edge interrupt
-      __bic_SR_register_on_exit(LPM3_bits);
     }
     else if (delay_flag == 1) {
       delay_flag = 0;
-      __bic_SR_register_on_exit(LPM3_bits);
+    }
+    else if ((system_state == COMMAND) || (system_state == COUNT) || (system_state == MENU)) {
+      TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
+      system_state = IDLE;
     }
     else {  // Else in COMMAND or COUNT, go to IDLE
       system_state = IDLE;
     }
+    _bic_SR_register_on_exit(LPM3_bits);
   }
 }
