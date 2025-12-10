@@ -162,13 +162,13 @@ void set_active_pin(unsigned char pin) {
 }
 void MENU_indicator(void) {  // Flash alternating 8 on displays
   __disable_interrupt();
-  SIPO_shift(SHIFT_BUFFER(0x88));
+  SIPO_shift(SHIFT_BUFFER(0xF8));
   timer_delay(3000);
-  SIPO_shift(SHIFT_BUFFER(0xFF));
+  SIPO_shift(SHIFT_BUFFER(0x8F));
   timer_delay(3000);
-  SIPO_shift(SHIFT_BUFFER(0x88));
+  SIPO_shift(SHIFT_BUFFER(0xF8));
   timer_delay(3000);
-  SIPO_shift(SHIFT_BUFFER(0xFF));
+  SIPO_shift(SHIFT_BUFFER(0x8F));
   timer_delay(3000);
   __bis_SR_register(GIE);
 }
@@ -192,7 +192,7 @@ int main(void) {
   while (1) {
     switch (system_state) {
       case IDLE:  // LPM and wait to turn on
-        SIPO_shift_safe(SHIFT_BUFFER(0xF8));  // Both displays off
+        SIPO_shift_safe(SHIFT_BUFFER(0xFF));  // Both displays off
         ready_active_pin(BIT1);
         __bis_SR_register(LPM3_bits + GIE);
         break;
