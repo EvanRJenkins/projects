@@ -10,17 +10,22 @@ Definitions
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
-Menu flag bitsmasks
+Bitmasks for flags1
 */
-#define COUNTER_RESET   (1 << 0)
-#define RANDOM_RANGE_2  (1 << 1)
-#define RANDOM_RANGE_4  (1 << 2)
-#define RANDOM_RANGE_6  (1 << 3)
-#define RANDOM_RANGE_8  (1 << 4)
-#define RANDOM_RANGE_10 (1 << 5)
-#define RANDOM_RANGE_12 (1 << 6)
-#define RANDOM_RANGE_20 (1 << 7)
-#define SINGLE_DIGIT_RANGE (menu_flags & (RANDOM_RANGE_2 | RANDOM_RANGE_4 | RANDOM_RANGE_8))
+#define COUNTER_RESET_FLAG   (1 << 0)
+#define RANDOM_RANGE_2_FLAG  (1 << 1)
+#define RANDOM_RANGE_4_FLAG  (1 << 2)
+#define RANDOM_RANGE_6_FLAG  (1 << 3)
+#define RANDOM_RANGE_8_FLAG  (1 << 4)
+#define RANDOM_RANGE_10_FLAG (1 << 5)
+#define RANDOM_RANGE_12_FLAG (1 << 6)
+#define RANDOM_RANGE_20_FLAG (1 << 7)
+#define SINGLE_DIGIT_RANGE (flags1 & (RANDOM_RANGE_2_FLAG | RANDOM_RANGE_4_FLAG | RANDOM_RANGE_8_FLAG))
+/*
+Bitmasks for flags2
+*/
+#define DELAY_FLAG (1 << 0)
+#define MENU_INDICATOR_FLAG (1 << 1)
 /*
 MACRO to switch digit order
 */
@@ -42,16 +47,47 @@ volatile state_t system_state = IDLE;
 volatile unsigned char rng_num = 0x00;
 volatile unsigned char active_pin = 0;
 volatile unsigned char current_count = 0;
-volatile unsigned char menu_flags = 0x00;
+volatile unsigned char flags1 = 0x00;
+volatile unsigned char flags2 = (0x00 | MENU_INDICATOR_FLAG);
 volatile signed char menu_count = -1;
-volatile unsigned char delay_flag = 0;
-volatile unsigned char menu_indicator_flag = 1;
 /*
 Helper functions
 */
+void set_active_pin(unsigned char pin) {
+  active_pin = pin;
+  if (pin == BIT1) {
+    P2IE &= ~BIT2; // Disable P2.2
+  }
+  else {
+    P2IE &= ~BIT1; // Disable P2.1
+  }
+}
+void ready_active_pin(unsigned char pin) {
+  active_pin = pin;  // Global
+  P2IES |= active_pin;  // Set edge select to high-low
+  P2IFG &= ~active_pin;  // Clear flag
+  P2IE |= active_pin;  // Enable interrupt for P2.1
+}
+void debounce_high_low_active_pin() {
+  P2IE &= ~active_pin;  // Disable button interrupt
+  P2IES ^= active_pin;  // Switch relevant edge
+  P2IFG &= ~active_pin;  // Clear any accumulated button flags
+}
+void start_timer_debounce(void){
+  TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
+  TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
+}
+void start_timer_longpress(void) { 
+  TACCR1 = TAR + LONG_PRESS_CYCLES;  // Start the Long Press Timer
+  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
+}
+void start_timer_timeout(void) {
+  TACCR1 = TAR + TIMEOUT_CYCLES;  // Start the Timeout Counter
+  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
+}
 void timer_delay(unsigned int cycles) {
   __disable_interrupt();  // Prevent interrupt interference
-  delay_flag = 1;
+  flags2 |= DELAY_FLAG;
   TACCR1 = TAR + cycles;  // Start the Long Press Timer
   TA0CCTL1 = CCIE;  // Enable Timer A1 interrupt
   __bis_SR_register(LPM3_bits + GIE);  // LPM until delay interrupt occurs
@@ -81,26 +117,26 @@ unsigned char BCD_mod(unsigned char input) {
   unsigned char lower = (input & 0x0F);
   unsigned char total_val = (upper * 10) + lower;
   unsigned char result_int = 0;
-  switch (menu_flags) {  // Get random number in flag range
-    case RANDOM_RANGE_2:
+  switch (flags1) {  // Get random number in flag range
+    case RANDOM_RANGE_2_FLAG:
       result_int = (total_val % 2) + 1;
       break;
-    case RANDOM_RANGE_4:
+    case RANDOM_RANGE_4_FLAG:
       result_int = (total_val % 4) + 1;
       break;
-    case RANDOM_RANGE_6:
+    case RANDOM_RANGE_6_FLAG:
       result_int = (total_val % 6) + 1;
       break;
-    case RANDOM_RANGE_8:
+    case RANDOM_RANGE_8_FLAG:
       result_int = (total_val % 8) + 1;
       break;
-    case RANDOM_RANGE_10:
+    case RANDOM_RANGE_10_FLAG:
       result_int = (total_val % 10) + 1;
       break;
-    case RANDOM_RANGE_12:
+    case RANDOM_RANGE_12_FLAG:
       result_int = (total_val % 12) + 1;
       break;
-    case RANDOM_RANGE_20:
+    case RANDOM_RANGE_20_FLAG:
       result_int = (total_val % 20) + 1;
       break;
     default:
@@ -136,38 +172,6 @@ void display_scramble_2_digits(void) {  // RNG visual sequence that only shifts 
       val += 0x06; 
     }
   }
-}
-void schedule_debounce(void){
-  TACCR0 = TAR + DEBOUCE_COUNT;  // Schedule debounce interrupt
-  TACCTL0 = CCIE;  // Enable Timer_A interrupt 0
-}
-void ready_active_pin(unsigned char pin) {
-  active_pin = pin;  // Global
-  P2IES |= active_pin;  // Set edge select to high-low
-  P2IFG &= ~active_pin;  // Clear flag
-  P2IE |= active_pin;  // Enable interrupt for P2.1
-}
-void debounce_high_low_active_pin() {
-  P2IE &= ~active_pin;  // Disable button interrupt
-  P2IES ^= active_pin;  // Switch relevant edge
-  P2IFG &= ~active_pin;  // Clear any accumulated button flags
-}
-void set_active_pin(unsigned char pin) {
-  active_pin = pin;
-  if (pin == BIT1) {
-    P2IE &= ~BIT2; // Disable P2.2
-  }
-  else {
-    P2IE &= ~BIT1; // Disable P2.1
-  }
-}
-void start_timer_timeout(void) {
-  TACCR1 = TAR + TIMEOUT_CYCLES;  // Start the Timeout Counter
-  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
-}
-void start_timer_longpress(void) { 
-  TACCR1 = TAR + LONG_PRESS_CYCLES;  // Start the Long Press Timer
-  TA0CCTL1 = CCIE;     // Enable Timer A1 interrupt
 }
 void MENU_indicator(void) {  // Flash alternating 8 on displays
   __disable_interrupt();
@@ -215,9 +219,9 @@ int main(void) {
 
       case COUNT:  // Make "random" number in set range and display for some time
         TA0CCTL1 &= ~CCIE;     // Disable timeout counter
-        if ((menu_flags & 0x01) == 1) {  // If COUNTER_RESET flag 
+        if ((flags1 & 0x01) == 1) {  // If COUNTER_RESET_FLAG flag 
           current_count = 0;  // Reset count
-          menu_flags &= 0xFE;  // Lower COUNTER_RESET flag
+          flags1 ^= COUNTER_RESET_FLAG;  // Lower COUNTER_RESET_FLAG flag
         }
         SIPO_shift_safe(SHIFT_BUFFER(hex_to_BCD(current_count)));
         P2IE |= (BIT1 | BIT2);  // Enable interrupt for P2.1 and P2.2
@@ -240,10 +244,10 @@ int main(void) {
       
       case MENU:  // Switch random range or clear counter
         TA0CCTL1 &= ~CCIE;     // Disable timeout counter
-        if (menu_indicator_flag == 1) {  // Flash alternating displays to indicate MENU state
+        if (flags2 & MENU_INDICATOR_FLAG) {  // Flash alternating displays to indicate MENU state
           P2IFG &= ~(BIT1 | BIT2);
+          flags2 ^= MENU_INDICATOR_FLAG;
           MENU_indicator();
-          menu_indicator_flag = 0;
         }
         else {
           SIPO_shift_safe((menu_count));  // Display on left to indicate menu mode
@@ -271,8 +275,8 @@ __interrupt void Port_2_ISR(void) {
           }
         }
         else { // If falling transition (Button Press)
-          schedule_debounce();
           start_timer_longpress();  // Start the long press timer
+          start_timer_debounce();  // Start the debounce timer
         }
         debounce_high_low_active_pin();
         break;
@@ -299,7 +303,7 @@ __interrupt void Port_2_ISR(void) {
           else {  // Do the opposite
             set_active_pin(BIT2);
           }
-          schedule_debounce();
+          start_timer_debounce();
         }
         debounce_high_low_active_pin();
         break;
@@ -320,7 +324,7 @@ __interrupt void Port_2_ISR(void) {
           else {  // Do the opposite
             set_active_pin(BIT2);
           }
-          schedule_debounce();
+          start_timer_debounce();
         }
         debounce_high_low_active_pin();
         break;
@@ -336,10 +340,10 @@ __interrupt void Port_2_ISR(void) {
             system_state = MENU;  // Stay in MENU
           }
           else {  // If return to IDLE button
-            menu_flags &= (0x01);  // Ensure all count settings are off
-            menu_flags |= (1 << menu_count);  // Set new count range if selected
+            flags1 &= (0x01);  // Ensure all count settings are off
+            flags1 |= (1 << menu_count);  // Set new count range if selected
             menu_count = 8;  // Reset menu_count to default
-            menu_indicator_flag = 1;
+            flags2 |= MENU_INDICATOR_FLAG;
             system_state = IDLE;
           }
         }
@@ -350,7 +354,7 @@ __interrupt void Port_2_ISR(void) {
           else {  // Do the opposite
             set_active_pin(BIT2);
           }
-          schedule_debounce();
+          start_timer_debounce();
         }
         debounce_high_low_active_pin();
         break;
@@ -372,8 +376,8 @@ __interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
       menu_count = -1;  // Ensure menu_count starts at reset condition
       debounce_high_low_active_pin(); // Override rising edge interrupt
     }
-    else if (delay_flag == 1) {
-      delay_flag = 0;
+    else if (flags2 & DELAY_FLAG) {
+      flags2 ^= DELAY_FLAG;  // Lower delay_flag
     }
     else if ((system_state == COMMAND) || (system_state == COUNT) || (system_state == MENU)) {
       TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
