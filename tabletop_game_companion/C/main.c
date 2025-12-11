@@ -4,9 +4,9 @@
 /*
 Definitions
 */
-#define DEBOUCE_COUNT 50  // Placeholder value
+#define DEBOUCE_COUNT 50  // Debounce timer cycles
 #define LONG_PRESS_CYCLES 5000  // For activating MENU state
-#define TIMEOUT_CYCLES 20000  // For timing uut of COMMAND state
+#define TIMEOUT_CYCLES 20000  // For timeout condition
 #define TAIV_2 2  // TACCR1 CCIFG
 #define DEBOUNCE_DONE ((P2IES & active_pin) == 0)
 /*
