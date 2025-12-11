@@ -1,18 +1,13 @@
 #include "_74AHC164.h"
-
-
 /*
 Global 74AHC164 input pin registers.
 */
-
 volatile unsigned char *pDSA_REG;  // Serial data
 volatile unsigned char *pMR_N_REG;  // Active-low RST
 volatile unsigned char *pCP_REG;  // Clock pulse
-
 /*
 Global input pin masks
 */
-
 unsigned char  DSA_PIN;  // Serial data
 unsigned char  MR_N_PIN;  // Active-low RST
 unsigned char  CP_PIN;  // Clock pulse
@@ -47,7 +42,6 @@ void SIPO_reset()
   *pMR_N_REG |= MR_N_PIN;
 }
 
-
 // Shift one byte over 8 clock cycles
 void SIPO_shift(unsigned char shift_byte)
 {
@@ -72,12 +66,3 @@ void SIPO_shift(unsigned char shift_byte)
     }
   }
 }
-
-
-
-
-
-
-
-
-
