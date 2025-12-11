@@ -29,7 +29,7 @@ Bitmasks for flags2
 /*
 MACRO to switch digit order
 */
-#define SHIFT_BUFFER(num)  ((((num) & 0x0F) << 4) | (((num) & 0xF0) >> 4))
+#define SHIFT_BUFFER(num) ((((num) & 0x0F) << 4) | (((num) & 0xF0) >> 4))
 /*
 FSM type definition
 */
@@ -140,7 +140,7 @@ unsigned char BCD_mod(unsigned char input) {
       result_int = (total_val % 20) + 1;
       break;
     default:
-      result_int = total_val; // Pass if no flag
+      result_int = total_val;  // Pass if no flag
       break;
   }
   unsigned char tens = result_int / 10;  // 12 / 10 = 1
@@ -232,7 +232,7 @@ int main(void) {
         break;
 
       case RANDOM:  // Increment counter and display for some time
-        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
+        TA0CCTL1 &= ~CCIE;  // Disable timeout counter
         rng_num = BCD_mod(hex_MOD_10(rng_num));
         if (SINGLE_DIGIT_RANGE) {
           display_scramble_1_digit();
@@ -246,7 +246,7 @@ int main(void) {
         break;
       
       case MENU:  // Switch random range or clear counter
-        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
+        TA0CCTL1 &= ~CCIE;   // Disable timeout counter
         if (flags2 & MENU_INDICATOR_FLAG) {  // Flash alternating displays to indicate MENU state
           P2IFG &= ~(BIT1 | BIT2);
           flags2 ^= MENU_INDICATOR_FLAG;
@@ -271,21 +271,20 @@ __interrupt void Port_2_ISR(void) {
     switch (system_state) {
       case IDLE:
         if (DEBOUNCE_DONE) {  // If rising transition (Button Release)
-          // Stop the long-press timer immediately
           TA0CCTL1 &= ~CCIE;  // Stop the long-press timer
           if (system_state == IDLE) { 
              system_state = COMMAND;
           }
         }
-        else { // If falling transition (Button Press)
+        else {  // If falling transition (Button Press)
           start_timer_longpress();  // Start the long press timer
           start_timer_debounce();  // Start the debounce timer
         }
         debounce_high_low_active_pin();
         break;
       case COMMAND:
-        TA0CCTL1 &= ~CCIE;     // Disable timeout counter
-        if (DEBOUNCE_DONE) { // If rising transition
+        TA0CCTL1 &= ~CCIE;  // Disable timeout counter
+        if (DEBOUNCE_DONE) {  // If rising transition
           switch (active_pin) {
             case BIT1:
               system_state = RANDOM;
@@ -311,7 +310,7 @@ __interrupt void Port_2_ISR(void) {
         debounce_high_low_active_pin();
         break;
       case COUNT:
-        if (DEBOUNCE_DONE) { // If rising transition
+        if (DEBOUNCE_DONE) {  // If rising transition
           if (active_pin == BIT2) {
             current_count += 1;
             system_state = COUNT;
@@ -332,7 +331,7 @@ __interrupt void Port_2_ISR(void) {
         debounce_high_low_active_pin();
         break;
         case MENU:
-        if (DEBOUNCE_DONE) { // If rising transition
+        if (DEBOUNCE_DONE) {  // If rising transition
           if (active_pin == BIT2) {  // If count button
             if (menu_count < 7) {  // Max settings count
               ++menu_count;
@@ -366,24 +365,24 @@ __interrupt void Port_2_ISR(void) {
 }
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void Timer_A0_ISR(void) {  // For button debounce (highest priority)
-  TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
+  TACCTL0 &= ~CCIE;   // Disable Timer_A interrupt
   P2IFG &= ~active_pin;  // Clear flag for the specific button that was pressed
-  P2IE |= active_pin;    // Re-enable interrupt for that specific button
+  P2IE |= active_pin;  // Re-enable interrupt for that specific button
 }
 #pragma vector = TIMER0_A1_VECTOR
 __interrupt void Timer_A1_ISR(void) {  // For long-press MENU activation
   if (TAIV == TAIV_2) {
-    TA0CCTL1 &= ~CCIE; // Disable this interrupt
+    TA0CCTL1 &= ~CCIE;  // Disable this interrupt
     if (system_state == IDLE) {  // If in IDLE and holding the button go to MENU
       system_state = MENU;
       menu_count = -1;  // Ensure menu_count starts at reset condition
-      debounce_high_low_active_pin(); // Override rising edge interrupt
+      debounce_high_low_active_pin();  // Override rising edge interrupt
     }
     else if (flags2 & DELAY_FLAG) {
       flags2 ^= DELAY_FLAG;  // Lower delay_flag
     }
     else {  // End timeout
-      TACCTL0 &= ~CCIE;      // Disable Timer_A interrupt
+      TACCTL0 &= ~CCIE;  // Disable Timer_A interrupt
       system_state = IDLE;
     }
     _bic_SR_register_on_exit(LPM3_bits);
